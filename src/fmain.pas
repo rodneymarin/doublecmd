@@ -1,4 +1,4 @@
-﻿{
+{
    Double Commander
    -------------------------------------------------------------------------
    Licence  : GNU GPL v 2.0
@@ -44,6 +44,7 @@ uses
   Buttons, SysUtils, Classes, SynEdit, LCLType, ComCtrls, LResources,
   KASToolBar, KASComboBox, uFilePanelSelect, uBriefFileView, VTEmuCtl, VTEmuPty,
   uFileView, uFileSource, uFileSourceManager, uFileViewNotebook, uFile, LCLVersion, KASToolPanel,
+  uFilePanel,
   uOperationsManager, uFileSourceOperation, uDrivesList, DCClassesUtf8,
   DCXmlConfig, uDrive, uDriveWatcher, uDCVersion, uMainCommands, uFormCommands,
   uOperationsPanel, KASToolItems, uKASToolItemsExtended, uCmdLineParams, uOSForms
@@ -245,15 +246,9 @@ type
     btnF7: TSpeedButton;
     btnF8: TSpeedButton;
     btnF9: TSpeedButton;
-    btnLeftDirectoryHotlist: TSpeedButton;
-    btnRightDirectoryHotlist: TSpeedButton;
-    dskLeft: TKASToolBar;
-    dskRight: TKASToolBar;
     edtCommand: TComboBoxWithDelItems;
     imgLstActions: TImageList;
     imgLstDirectoryHotlist: TImageList;
-    lblRightDriveInfo: TLabel;
-    lblLeftDriveInfo: TLabel;
     lblCommandPath: TLabel;
     mnuOpenStash: TMenuItem;
     mnuDoAnyCmCommand: TMenuItem;
@@ -307,14 +302,8 @@ type
     miNetworkQuickConnect: TMenuItem;
     miNetworkConnect: TMenuItem;
     mnuNetwork: TMenuItem;
-    pnlDskLeft: TPanel;
-    pnlDiskLeftInner: TKASToolPanel;
-    pnlDskRight: TPanel;
-    pnlDiskRightInner: TKASToolPanel;
     Timer: TTimer;
     PanelAllProgress: TPanel;
-    pbxRightDrive: TPaintBox;
-    pbxLeftDrive: TPaintBox;
     tbPaste: TMenuItem;
     tbCopy: TMenuItem;
     tbCut: TMenuItem;
@@ -396,7 +385,6 @@ type
     nbConsole: TPageControl;
     pgConsole: TTabSheet;
     pnlCmdLine: TPanel;
-    MainSplitter: TPanel;
     MainToolBar: TKASToolBar;
     MiddleToolBar: TKASToolBar;
     mnuOpenVFSList: TMenuItem;
@@ -405,18 +393,6 @@ type
     pmSplitterPercent: TPopupMenu;
     pnlCommand: TPanel;
     pnlKeys: TPanel;
-    pnlLeftTools: TPanel;
-    pnlRightTools: TPanel;
-    pnlRight: TPanel;
-    pnlLeft: TPanel;
-    btnLeftDrive: TSpeedButton;
-    btnLeftHome: TSpeedButton;
-    btnLeftUp: TSpeedButton;
-    btnLeftRoot: TSpeedButton;
-    btnRightDrive: TSpeedButton;
-    btnRightHome: TSpeedButton;
-    btnRightUp: TSpeedButton;
-    btnRightRoot: TSpeedButton;
     LogSplitter: TSplitter;
     pmColumnsMenu: TPopupMenu;
     pmDropMenu: TPopupMenu;
@@ -424,14 +400,11 @@ type
     pmTrayIconMenu: TPopupMenu;
     pmLogMenu: TPopupMenu;
     seLogWindow: TSynEdit;
-    btnRightEqualLeft: TSpeedButton;
-    btnLeftEqualRight: TSpeedButton;
     ConsoleSplitter: TSplitter;
     tbDelete: TMenuItem;
     tbEdit: TMenuItem;
     mnuMain: TMainMenu;
     pnlNotebooks: TPanel;
-    pnlDisk: TKASToolPanel;
     mnuHelp: TMenuItem;
     mnuHelpAbout: TMenuItem;
     mnuShow: TMenuItem;
@@ -595,10 +568,10 @@ type
     procedure mnuAllOperPauseClick(Sender: TObject);
     procedure mnuAllOperProgressClick(Sender: TObject);
     procedure btnF8Click(Sender: TObject);
-    procedure btnLeftClick(Sender: TObject);
-    procedure btnLeftDirectoryHotlistClick(Sender: TObject);
-    procedure btnRightClick(Sender: TObject);
-    procedure btnRightDirectoryHotlistClick(Sender: TObject);
+    procedure PanelButtonClickEvent(Sender: TObject);
+    procedure PanelHotListClick(Sender: TObject);
+    procedure PanelDriveButtonClick(Sender: TObject);
+    procedure PanelEqualButtonClick(Sender: TObject);
     procedure btnDriveMouseUp(Sender: TObject; Button: TMouseButton; {%H-}Shift: TShiftState; X, Y: Integer);
     procedure ConsoleSplitterCanResize(Sender: TObject; var NewSize: Integer;
       var {%H-}Accept: Boolean);
@@ -633,13 +606,6 @@ type
     procedure FormDropFiles(Sender: TObject; const FileNames: array of String);
     procedure FormUTF8KeyPress(Sender: TObject; var UTF8Key: TUTF8Char);
     procedure FormWindowStateChange(Sender: TObject);
-    procedure MainSplitterDblClick(Sender: TObject);
-    procedure MainSplitterMouseDown(Sender: TObject; Button: TMouseButton;
-      Shift: TShiftState; X, Y: Integer);
-    procedure MainSplitterMouseMove(Sender: TObject; Shift: TShiftState; X,
-      Y: Integer);
-    procedure MainSplitterMouseUp(Sender: TObject; Button: TMouseButton;
-      Shift: TShiftState; X, Y: Integer);   
     procedure MainTrayIconClick(Sender: TObject);
     procedure lblDriveInfoDblClick(Sender: TObject);
     procedure MainToolBarDragDrop(Sender, Source: TObject; X, Y: Integer);
@@ -655,7 +621,6 @@ type
     procedure frmMainAfterShow(Sender: TObject);
     procedure frmMainShow(Sender: TObject);
     procedure mnuDropClick(Sender: TObject);
-    procedure mnuSplitterPercentClick(Sender: TObject);
     procedure mnuTabMenuExecute(Sender: TObject);
     procedure mnuTabMenuClick(Sender: TObject);
     procedure nbPageAfterMouseDown(Data: PtrInt);
@@ -685,6 +650,9 @@ type
     procedure pnlLeftRightDblClick(Sender: TObject);
     procedure pnlNotebooksResize(Sender: TObject);
     procedure pnlRightResize(Sender: TObject);
+    function CreateNotebook(aParent: TWinControl; aIndex: TFilePanelIndex): TFileViewNotebook;
+    procedure CreateFilePanels;
+    procedure LayoutPanels;
     procedure sboxDrivePaint(Sender: TObject);
     procedure PaintDriveFreeBar(Sender: TObject; const bIndUseGradient: boolean;
       const pIndForeColor, pIndThresholdForeColor, pIndBackColor: TColor);
@@ -721,13 +689,9 @@ type
 {$ENDIF}
   private
     { Private declarations }
-    FMainSplitterPos: Double;
-    PanelSelected: TFilePanelSelect;
     DrivesList : TDrivesList;
-    MainSplitterHintWnd: THintWindow;
     HiddenToTray: Boolean;
     HidingTrayIcon: Boolean; // @true if the icon is in the process of hiding
-    nbLeft, nbRight: TFileViewNotebook;
     cmdConsole: TVirtualTerminal;
     FCommands: TMainCommands;
     FInitializedView: Boolean;
@@ -741,10 +705,21 @@ type
     FSyncChangeDir: String;
     sStaticTitleBarString: String;
 
+    {en
+       The file panels of the main window.
+     }
+    FPanels: array[0..FILE_PANEL_COUNT-1] of TFilePanel;
+    {en
+       Index of the currently active file panel.
+     }
+    FActivePanel: TFilePanelIndex;
+    {en
+       Index of the file panel which is used as a destination of the
+       operations between panels (copy, move, compare, ...).
+     }
+    FTargetPanel: TFilePanelIndex;
+
     // frost_asm begin
-    // mainsplitter
-    MainSplitterLeftMouseBtnDown: Boolean;
-    MainSplitterMouseDownX, MainSplitterMouseDownY: Integer;
     FResizingFilePanels: Boolean;
     // lastWindowState
     lastWindowState:TWindowState;
@@ -766,8 +741,7 @@ type
 
     procedure CheckCommandLine(ShiftEx: TShiftState; var Key: Word);
     function ExecuteCommandFromEdit(sCmd: String; bRunInTerm: Boolean): Boolean;
-    procedure SetMainSplitterPos(AValue: Double);
-    procedure SetPanelSelected(AValue: TFilePanelSelect);
+    procedure SetPanelSelected(AValue: TFilePanelIndex);
     procedure UpdateActionIcons;
     procedure UpdateHotDirIcons;
     procedure TypeInCommandLine(Str: String);
@@ -781,7 +755,7 @@ type
     procedure CloseNotebook(ANotebook: TFileViewNotebook);
 
     procedure DriveListDriveSelected(Sender: TObject; ADriveIndex: Integer;
-      APanel: TFilePanelSelect);
+      APanel: TFilePanelIndex);
     procedure DriveListClose(Sender: TObject);
     function  FindMatchingDrive(Address, Path: String): Integer;
     procedure UpdateDriveToolbarSelection(DriveToolbar: TKAStoolBar; FileView: TFileView);
@@ -816,8 +790,78 @@ type
     procedure installMacOSFNKeyTap(Sender: TObject; var Done: Boolean);
     {$ENDIF}
 
-  protected
-    procedure CreateWnd; override;
+    {en
+       Generic accessors to the file panels.
+     }
+    function GetPanel(aIndex: Integer): TFilePanel;
+    function GetPanelNotebook(aIndex: Integer): TFileViewNotebook;
+    function GetPanelContainer(aIndex: Integer): TPanel;
+    function GetPanelToolsPanel(aIndex: Integer): TPanel;
+    function GetPanelDiskToolBar(aIndex: Integer): TKASToolBar;
+    function GetPanelDriveInfo(aIndex: Integer): TLabel;
+    function GetPanelDriveBox(aIndex: Integer): TPaintBox;
+    function GetPanelDriveButton(aIndex: Integer): TSpeedButton;
+    function GetPanelHomeButton(aIndex: Integer): TSpeedButton;
+    function GetPanelUpButton(aIndex: Integer): TSpeedButton;
+    function GetPanelRootButton(aIndex: Integer): TSpeedButton;
+    function GetPanelHotListButton(aIndex: Integer): TSpeedButton;
+    function GetPanelEqualButton(aIndex: Integer): TSpeedButton;
+
+    function GetNotebookLeft: TFileViewNotebook;
+    function GetNotebookRight: TFileViewNotebook;
+    function GetContainerLeft: TPanel;
+    function GetContainerRight: TPanel;
+    function GetToolsPanelLeft: TPanel;
+    function GetToolsPanelRight: TPanel;
+    function GetDiskToolBarLeft: TKASToolBar;
+    function GetDiskToolBarRight: TKASToolBar;
+    function GetDriveInfoLeft: TLabel;
+    function GetDriveInfoRight: TLabel;
+    function GetDriveBoxLeft: TPaintBox;
+    function GetDriveBoxRight: TPaintBox;
+    function GetDriveButtonLeft: TSpeedButton;
+    function GetDriveButtonRight: TSpeedButton;
+    function GetHomeButtonLeft: TSpeedButton;
+    function GetHomeButtonRight: TSpeedButton;
+    function GetUpButtonLeft: TSpeedButton;
+    function GetUpButtonRight: TSpeedButton;
+    function GetRootButtonLeft: TSpeedButton;
+    function GetRootButtonRight: TSpeedButton;
+    function GetHotListButtonLeft: TSpeedButton;
+    function GetHotListButtonRight: TSpeedButton;
+    function GetEqualButtonLeft: TSpeedButton;
+    function GetEqualButtonRight: TSpeedButton;
+
+    {en
+       Compatibility aliases. They refer to the first two panels of the grid,
+       which historically were shown side by side.
+     }
+    property nbLeft: TFileViewNotebook read GetNotebookLeft;
+    property nbRight: TFileViewNotebook read GetNotebookRight;
+    property pnlLeft: TPanel read GetContainerLeft;
+    property pnlRight: TPanel read GetContainerRight;
+    property pnlLeftTools: TPanel read GetToolsPanelLeft;
+    property pnlRightTools: TPanel read GetToolsPanelRight;
+    property dskLeft: TKASToolBar read GetDiskToolBarLeft;
+    property dskRight: TKASToolBar read GetDiskToolBarRight;
+    property lblLeftDriveInfo: TLabel read GetDriveInfoLeft;
+    property lblRightDriveInfo: TLabel read GetDriveInfoRight;
+    property pbxLeftDrive: TPaintBox read GetDriveBoxLeft;
+    property pbxRightDrive: TPaintBox read GetDriveBoxRight;
+    property btnLeftDrive: TSpeedButton read GetDriveButtonLeft;
+    property btnRightDrive: TSpeedButton read GetDriveButtonRight;
+    property btnLeftHome: TSpeedButton read GetHomeButtonLeft;
+    property btnRightHome: TSpeedButton read GetHomeButtonRight;
+    property btnLeftUp: TSpeedButton read GetUpButtonLeft;
+    property btnRightUp: TSpeedButton read GetUpButtonRight;
+    property btnLeftRoot: TSpeedButton read GetRootButtonLeft;
+    property btnRightRoot: TSpeedButton read GetRootButtonRight;
+    property btnLeftDirectoryHotlist: TSpeedButton read GetHotListButtonLeft;
+    property btnRightDirectoryHotlist: TSpeedButton read GetHotListButtonRight;
+    property btnLeftEqualRight: TSpeedButton read GetEqualButtonLeft;
+    property btnRightEqualLeft: TSpeedButton read GetEqualButtonRight;
+
+  protected    procedure CreateWnd; override;
     procedure DoAutoAdjustLayout(const AMode: TLayoutAdjustmentPolicy;
                             const AXProportion, AYProportion: Double); override;
 
@@ -833,6 +877,21 @@ type
     function NotActiveNotebook: TFileViewNotebook;
     function FrameLeft: TFileView;
     function FrameRight: TFileView;
+    {en
+       Returns the file view of the panel with the given index.
+     }
+    function PanelFrame(aIndex: TFilePanelIndex): TFileView;
+    {en
+       Returns the file panel with the given index.
+     }
+    function Panel(aIndex: TFilePanelIndex): TFilePanel;
+    {en
+       Asks the user to select the destination file panel. Returns False
+       if the user has cancelled the selection.
+     }
+    function SelectTargetPanel(const ATitle: String;
+                               aExcludePanel: Integer = -1;
+                               aAllowActivePanel: Boolean = False): Boolean;
     procedure ForEachView(CallbackFunction: TForEachViewFunction; UserData: Pointer);
     procedure UpdateAvailabilityForViewsUnderPath(AFileView: TFileView; AUserData: Pointer);
     procedure GetListOpenedPaths(const APaths:TStringList);
@@ -878,7 +937,7 @@ type
                                         var TargetFileSource: IFileSource;
                                         EnteredPath: String; BaseDir: String;
                                         out DestPath, DestMask: String); overload;
-    procedure SetActiveFrame(panel: TFilePanelSelect);
+    procedure SetActiveFrame(aPanel: TFilePanelIndex);
     procedure SetActiveFrame(FileView: TFileView);
     procedure UpdateFileView;
     procedure UpdateShellTreeView;
@@ -890,7 +949,7 @@ type
     procedure UpdateMainTitleBar;
     procedure CreateDiskPanel(dskPanel : TKASToolBar);
     procedure UpdateSelectedDrive(ANoteBook: TFileViewNotebook);
-    procedure SetPanelDrive(aPanel: TFilePanelSelect; Drive: PDrive; ActivateIfNeeded: Boolean);
+    procedure SetPanelDrive(aPanel: TFilePanelIndex; Drive: PDrive; ActivateIfNeeded: Boolean);
     function CreateFileView(sType: String; Page: TFileViewPage; AConfig: TXmlConfig; ANode: TXmlNode): TFileView;
     procedure AssignEvents(AFileView: TFileView);
     function RemovePage(ANoteBook: TFileViewNotebook; iPageIndex:Integer; CloseLocked: Boolean = True; ConfirmCloseLocked: integer = 0; ShowButtonAll: Boolean = False): LongInt;
@@ -919,10 +978,10 @@ type
     function  IsCommandLineVisible: Boolean;
     procedure ShowCommandLine(AFocus: Boolean);
     procedure ConfigSaveSettings(bForce: Boolean);
-    procedure ShowDrivesList(APanel: TFilePanelSelect);
+    procedure ShowDrivesList(APanel: TFilePanelIndex);
     procedure ExecuteCommandLine(bRunInTerm: Boolean);
     procedure UpdatePrompt;
-    procedure UpdateFreeSpace(Panel: TFilePanelSelect; Clear: Boolean);
+    procedure UpdateFreeSpace(aPanel: TFilePanelIndex; Clear: Boolean);
     procedure ReLoadTabs(ANoteBook: TFileViewNotebook);
     procedure ShowOptionsLayout(Data: PtrInt);
     procedure ToggleFullscreenConsole;
@@ -947,10 +1006,14 @@ type
     property Drives: TDrivesList read DrivesList;
     property SyncChangeDir: String write FSyncChangeDir;
     property Commands: TMainCommands read FCommands implements IFormCommands;
-    property SelectedPanel: TFilePanelSelect read PanelSelected write SetPanelSelected;
-    property LeftTabs: TFileViewNotebook read nbLeft;
-    property RightTabs: TFileViewNotebook read nbRight;
-    property MainSplitterPos: Double read FMainSplitterPos write SetMainSplitterPos;
+    property SelectedPanel: TFilePanelIndex read FActivePanel write SetPanelSelected;
+    {en
+       Index of the file panel which is used as a destination of the
+       operations between panels.
+     }
+    property TargetPanel: TFilePanelIndex read FTargetPanel write FTargetPanel;
+    property LeftTabs: TFileViewNotebook read GetNotebookLeft;
+    property RightTabs: TFileViewNotebook read GetNotebookRight;
     property StaticTitle: String read sStaticTitleBarString write sStaticTitleBarString;
   end;
 
@@ -967,6 +1030,7 @@ uses
   Themes, uFileProcs, uShellContextMenu, fTreeViewMenu,
   Math, LCLIntf, Dialogs, uGlobs, uLng, uMasks, fCopyMoveDlg, uQuickViewPanel,
   uShowMsg, uDCUtils, uLog, uGlobsPaths, LCLProc, uOSUtils, uPixMapManager, LazUTF8,
+  uFilePanelSelectDlg,
   LazLogger, uDragDropEx, uKeyboard,
   uLocalFileSource, uFileSystemFileSource, uSearchResultFileSource, uStashFileSource,
   uVfsModule, fViewOperations, uMultiListFileSource,
@@ -1075,24 +1139,6 @@ end;
 
 procedure TfrmMain.FormCreate(Sender: TObject);
 
-  function CreateNotebook(aParent: TWinControl; aSide: TFilePanelSelect): TFileViewNotebook;
-  begin
-    Result := TFileViewNotebook.Create(aParent, aSide);
-    Result.Align := alClient;
-    Result.Options := [nboHidePageListPopup];
-    {$if lcl_fullversion >= 1070000}
-      Result.Options := Result.Options + [nboDoChangeOnSetIndex];
-    {$endif}
-
-    Result.OnCloseTabClicked := @NotebookCloseTabClicked;
-    Result.OnMouseDown := @nbPageMouseDown;
-    Result.OnMouseUp := @nbPageMouseUp;
-    Result.OnChange := @nbPageChanged;
-    Result.OnDblClick := @pnlLeftRightDblClick;
-    Result.OnDragOver:= @NotebookDragOver;
-    Result.OnDragDrop:= @NotebookDragDrop;
-  end;
-
   function GenerateTitle(): String;
   var
     R: Integer;
@@ -1197,15 +1243,15 @@ begin
 
   InitPropStorage(Self);
 
-  PanelSelected:=fpLeft;
+  FActivePanel := 0;
+  FTargetPanel := 1;
 
   seLogWindow.FixDefaultKeystrokes;
 
   HMMainForm := HotMan.Register(Self, HotkeysCategory);
   HotMan.Register(edtCommand, 'Command Line');
 
-  nbLeft := CreateNotebook(pnlLeft, fpLeft);
-  nbRight := CreateNotebook(pnlRight, fpRight);
+  CreateFilePanels;
 
   FDrivesListPopup := TDrivesListPopup.Create(Self, Self);
   FDrivesListPopup.OnDriveSelected := @DriveListDriveSelected;
@@ -1293,9 +1339,53 @@ begin
 {$ENDIF}
 end;
 
-procedure TfrmMain.btnLeftClick(Sender: TObject);
+procedure TfrmMain.PanelButtonClickEvent(Sender: TObject);
 begin
-  PanelButtonClick(Sender as TSpeedButton, FrameLeft);
+  PanelButtonClick(Sender as TSpeedButton,
+                   PanelFrame(TFilePanelIndex((Sender as TSpeedButton).Tag)));
+end;
+
+procedure TfrmMain.PanelHotListClick(Sender: TObject);
+var
+  AIndex: TFilePanelIndex;
+  APanel: TFilePanel;
+  P: TPoint;
+begin
+  AIndex := TFilePanelIndex((Sender as TSpeedButton).Tag);
+  APanel := GetPanel(AIndex);
+  if tb_activate_panel_on_click in gDirTabOptions then
+    SetActiveFrame(AIndex);
+  gDirectoryHotlist.PopulateMenuWithHotDir(pmHotList,@HotDirSelected,@miHotAddOrConfigClick,mpHOTDIRSWITHCONFIG,0);
+  if Assigned(APanel) then
+  begin
+    P := Classes.Point(APanel.btnHotList.Left, APanel.btnHotList.Height);
+    P := APanel.ToolsPanel.ClientToScreen(P);
+    pmHotList.PopUp(P.X, P.Y);
+  end;
+end;
+
+procedure TfrmMain.PanelDriveButtonClick(Sender: TObject);
+begin
+  ShowDrivesList(TFilePanelIndex((Sender as TSpeedButton).Tag));
+end;
+
+procedure TfrmMain.PanelEqualButtonClick(Sender: TObject);
+var
+  AIndex: TFilePanelIndex;
+  ASourceFrame: TFileView;
+begin
+  AIndex := TFilePanelIndex((Sender as TSpeedButton).Tag);
+
+  // Ask the user from which panel the directory should be taken.
+  if not SelectTargetPanel('Take the directory from panel', AIndex) then
+    Exit;
+
+  ASourceFrame := NotActiveFrame;
+  if Assigned(ASourceFrame) then
+  begin
+    SetFileSystemPath(PanelFrame(AIndex), ASourceFrame.CurrentPath);
+    PanelFrame(AIndex).SetFocus;
+  end;
 end;
 
 procedure TfrmMain.actExecute(Sender: TObject);
@@ -1412,33 +1502,6 @@ end;
 { TfrmMain.btnLeftDirectoryHotlistClick}
 //To make appear the Directory Hotlist popup menu when pressing "*" button on left
 //
-procedure TfrmMain.btnLeftDirectoryHotlistClick(Sender: TObject);
-var P:TPoint;
-begin
-  if tb_activate_panel_on_click in gDirTabOptions then SetActiveFrame(fpLeft);
-  gDirectoryHotlist.PopulateMenuWithHotDir(pmHotList,@HotDirSelected,@miHotAddOrConfigClick,mpHOTDIRSWITHCONFIG,0);
-  p := Classes.Point(btnLeftDirectoryHotlist.Left,btnLeftDirectoryHotlist.Height);
-  p := pnlLeftTools.ClientToScreen(p);
-  pmHotList.PopUp(P.x,P.y);
-end;
-
-procedure TfrmMain.btnRightClick(Sender: TObject);
-begin
-  PanelButtonClick(Sender as TSpeedButton, FrameRight);
-end;
-
-{ TfrmMain.btnRightDirectoryHotlistClick}
-//To make appear the Directory Hotlist popup menu when pressing "*" button on right
-//
-procedure TfrmMain.btnRightDirectoryHotlistClick(Sender: TObject);
-var P:TPoint;
-begin
-  if tb_activate_panel_on_click in gDirTabOptions then SetActiveFrame(fpRight);
-  gDirectoryHotlist.PopulateMenuWithHotDir(pmHotList,@HotDirSelected,@miHotAddOrConfigClick,mpHOTDIRSWITHCONFIG,0);
-  p := Classes.Point(btnRightDirectoryHotlist.Left,btnRightDirectoryHotlist.Height);
-  p := pnlRightTools.ClientToScreen(p);
-  pmHotList.PopUp(P.x,P.y);
-end;
 
 procedure TfrmMain.btnDriveMouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
@@ -2903,63 +2966,314 @@ begin
   end;
 end;
 
+function TfrmMain.GetPanel(aIndex: Integer): TFilePanel;
+begin
+  if (aIndex >= 0) and (aIndex < FILE_PANEL_COUNT) then
+    Result := FPanels[aIndex]
+  else
+    Result := nil;
+end;
+
+function TfrmMain.GetPanelNotebook(aIndex: Integer): TFileViewNotebook;
+var
+  APanel: TFilePanel;
+begin
+  APanel := GetPanel(aIndex);
+  if Assigned(APanel) then
+    Result := APanel.Notebook
+  else
+    Result := nil;
+end;
+
+function TfrmMain.GetPanelContainer(aIndex: Integer): TPanel;
+var
+  APanel: TFilePanel;
+begin
+  APanel := GetPanel(aIndex);
+  if Assigned(APanel) then
+    Result := APanel.Container
+  else
+    Result := nil;
+end;
+
+function TfrmMain.GetPanelToolsPanel(aIndex: Integer): TPanel;
+var
+  APanel: TFilePanel;
+begin
+  APanel := GetPanel(aIndex);
+  if Assigned(APanel) then
+    Result := APanel.ToolsPanel
+  else
+    Result := nil;
+end;
+
+function TfrmMain.GetPanelDiskToolBar(aIndex: Integer): TKASToolBar;
+var
+  APanel: TFilePanel;
+begin
+  APanel := GetPanel(aIndex);
+  if Assigned(APanel) then
+    Result := APanel.DiskToolBar
+  else
+    Result := nil;
+end;
+
+function TfrmMain.GetPanelDriveInfo(aIndex: Integer): TLabel;
+var
+  APanel: TFilePanel;
+begin
+  APanel := GetPanel(aIndex);
+  if Assigned(APanel) then
+    Result := APanel.lblDriveInfo
+  else
+    Result := nil;
+end;
+
+function TfrmMain.GetPanelDriveBox(aIndex: Integer): TPaintBox;
+var
+  APanel: TFilePanel;
+begin
+  APanel := GetPanel(aIndex);
+  if Assigned(APanel) then
+    Result := APanel.pbxDrive
+  else
+    Result := nil;
+end;
+
+function TfrmMain.GetPanelDriveButton(aIndex: Integer): TSpeedButton;
+var
+  APanel: TFilePanel;
+begin
+  APanel := GetPanel(aIndex);
+  if Assigned(APanel) then
+    Result := APanel.btnDrive
+  else
+    Result := nil;
+end;
+
+function TfrmMain.GetPanelHomeButton(aIndex: Integer): TSpeedButton;
+var
+  APanel: TFilePanel;
+begin
+  APanel := GetPanel(aIndex);
+  if Assigned(APanel) then
+    Result := APanel.btnHome
+  else
+    Result := nil;
+end;
+
+function TfrmMain.GetPanelUpButton(aIndex: Integer): TSpeedButton;
+var
+  APanel: TFilePanel;
+begin
+  APanel := GetPanel(aIndex);
+  if Assigned(APanel) then
+    Result := APanel.btnUp
+  else
+    Result := nil;
+end;
+
+function TfrmMain.GetPanelRootButton(aIndex: Integer): TSpeedButton;
+var
+  APanel: TFilePanel;
+begin
+  APanel := GetPanel(aIndex);
+  if Assigned(APanel) then
+    Result := APanel.btnRoot
+  else
+    Result := nil;
+end;
+
+function TfrmMain.GetPanelHotListButton(aIndex: Integer): TSpeedButton;
+var
+  APanel: TFilePanel;
+begin
+  APanel := GetPanel(aIndex);
+  if Assigned(APanel) then
+    Result := APanel.btnHotList
+  else
+    Result := nil;
+end;
+
+function TfrmMain.GetPanelEqualButton(aIndex: Integer): TSpeedButton;
+var
+  APanel: TFilePanel;
+begin
+  APanel := GetPanel(aIndex);
+  if Assigned(APanel) then
+    Result := APanel.btnEqual
+  else
+    Result := nil;
+end;
+
+function TfrmMain.GetNotebookLeft: TFileViewNotebook;
+begin
+  Result := GetPanelNotebook(0);
+end;
+
+function TfrmMain.GetNotebookRight: TFileViewNotebook;
+begin
+  Result := GetPanelNotebook(1);
+end;
+
+function TfrmMain.GetContainerLeft: TPanel;
+begin
+  Result := GetPanelContainer(0);
+end;
+
+function TfrmMain.GetContainerRight: TPanel;
+begin
+  Result := GetPanelContainer(1);
+end;
+
+function TfrmMain.GetToolsPanelLeft: TPanel;
+begin
+  Result := GetPanelToolsPanel(0);
+end;
+
+function TfrmMain.GetToolsPanelRight: TPanel;
+begin
+  Result := GetPanelToolsPanel(1);
+end;
+
+function TfrmMain.GetDiskToolBarLeft: TKASToolBar;
+begin
+  Result := GetPanelDiskToolBar(0);
+end;
+
+function TfrmMain.GetDiskToolBarRight: TKASToolBar;
+begin
+  Result := GetPanelDiskToolBar(1);
+end;
+
+function TfrmMain.GetDriveInfoLeft: TLabel;
+begin
+  Result := GetPanelDriveInfo(0);
+end;
+
+function TfrmMain.GetDriveInfoRight: TLabel;
+begin
+  Result := GetPanelDriveInfo(1);
+end;
+
+function TfrmMain.GetDriveBoxLeft: TPaintBox;
+begin
+  Result := GetPanelDriveBox(0);
+end;
+
+function TfrmMain.GetDriveBoxRight: TPaintBox;
+begin
+  Result := GetPanelDriveBox(1);
+end;
+
+function TfrmMain.GetDriveButtonLeft: TSpeedButton;
+begin
+  Result := GetPanelDriveButton(0);
+end;
+
+function TfrmMain.GetDriveButtonRight: TSpeedButton;
+begin
+  Result := GetPanelDriveButton(1);
+end;
+
+function TfrmMain.GetHomeButtonLeft: TSpeedButton;
+begin
+  Result := GetPanelHomeButton(0);
+end;
+
+function TfrmMain.GetHomeButtonRight: TSpeedButton;
+begin
+  Result := GetPanelHomeButton(1);
+end;
+
+function TfrmMain.GetUpButtonLeft: TSpeedButton;
+begin
+  Result := GetPanelUpButton(0);
+end;
+
+function TfrmMain.GetUpButtonRight: TSpeedButton;
+begin
+  Result := GetPanelUpButton(1);
+end;
+
+function TfrmMain.GetRootButtonLeft: TSpeedButton;
+begin
+  Result := GetPanelRootButton(0);
+end;
+
+function TfrmMain.GetRootButtonRight: TSpeedButton;
+begin
+  Result := GetPanelRootButton(1);
+end;
+
+function TfrmMain.GetHotListButtonLeft: TSpeedButton;
+begin
+  Result := GetPanelHotListButton(0);
+end;
+
+function TfrmMain.GetHotListButtonRight: TSpeedButton;
+begin
+  Result := GetPanelHotListButton(1);
+end;
+
+function TfrmMain.GetEqualButtonLeft: TSpeedButton;
+begin
+  Result := GetPanelEqualButton(0);
+end;
+
+function TfrmMain.GetEqualButtonRight: TSpeedButton;
+begin
+  Result := GetPanelEqualButton(1);
+end;
+
+function TfrmMain.Panel(aIndex: TFilePanelIndex): TFilePanel;
+begin
+  Result := GetPanel(aIndex);
+end;
+
+function TfrmMain.PanelFrame(aIndex: TFilePanelIndex): TFileView;
+var
+  APanel: TFilePanel;
+begin
+  APanel := GetPanel(aIndex);
+  if Assigned(APanel) then
+    Result := APanel.ActiveView
+  else
+    Result := nil;
+end;
+
 function TfrmMain.ActiveFrame: TFileView;
 begin
-  case PanelSelected of
-    fpLeft:
-      Result := FrameLeft;
-    fpRight:
-      Result := FrameRight;
-  else
-    assert(false,'Bad active frame');
-  end;
+  Result := PanelFrame(FActivePanel);
 end;
 
 function TfrmMain.NotActiveFrame: TFileView;
 begin
-  case PanelSelected of
-    fpRight:
-      Result := FrameLeft;
-    fpLeft:
-      Result := FrameRight;
-  else
-    assert(false,'Bad active frame');
-    Result:=FrameLeft;// only for compilator warning;
-  end;
+  {en
+     The "other" panel is the panel which is currently used as a destination
+     of the operations between panels.
+  }
+  Result := PanelFrame(FTargetPanel);
 end;
 
 function TfrmMain.ActiveNotebook: TFileViewNotebook;
 begin
-  case PanelSelected of
-    fpLeft:
-      Result := nbLeft;
-    fpRight:
-      Result := nbRight;
-  else
-    assert(false,'Bad active notebook');
-  end;
+  Result := GetPanelNotebook(FActivePanel);
 end;
 
 function TfrmMain.NotActiveNotebook: TFileViewNotebook;
 begin
-  case PanelSelected of
-    fpLeft:
-      Result := nbRight;
-    fpRight:
-      Result := nbLeft;
-  else
-    assert(false,'Bad active notebook');
-  end;
+  Result := GetPanelNotebook(FTargetPanel);
 end;
 
 function TfrmMain.FrameLeft: TFileView;
 begin
-  Result := nbLeft.ActiveView;
+  Result := PanelFrame(0);
 end;
 
 function TfrmMain.FrameRight: TFileView;
 begin
-  Result := nbRight.ActiveView;
+  Result := PanelFrame(1);
 end;
 
 procedure TfrmMain.ForEachView(CallbackFunction: TForEachViewFunction; UserData: Pointer);
