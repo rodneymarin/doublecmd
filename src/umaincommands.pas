@@ -1510,6 +1510,8 @@ begin
       fsParams.targetFS:= ActiveFrame.FileSource;
     end
     else begin
+      if not AskTargetPanel('Pack to panel') then
+        Exit;
       fsParams.targetPath:= NotActiveFrame.CurrentPath;
       fsParams.targetFS:= NotActiveFrame.FileSource;
     end;
@@ -4722,12 +4724,13 @@ begin
     WantedHorizontalFilePanels := not WantedHorizontalFilePanels;
   end;
 
-  if WantedHorizontalFilePanels<>gHorizontalFilePanels then
-  begin
-    gHorizontalFilePanels:=WantedHorizontalFilePanels;
-    frmMain.actHorizontalFilePanels.Checked := gHorizontalFilePanels;
-    frmMain.UpdateWindowView;
-  end;
+  {en
+     The file panels are always arranged in a fixed grid, so this option
+     does not change anything anymore. The layout is recalculated only.
+   }
+  gHorizontalFilePanels:= False;
+  frmMain.actHorizontalFilePanels.Checked := False;
+  frmMain.LayoutPanels;
 end;
 
 procedure TMainCommands.cm_OperationsViewer(const Params: array of string);
