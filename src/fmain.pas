@@ -1175,6 +1175,7 @@ var
   I: Integer;
 begin
   Application.OnException := @AppException;
+  CreateFilePanels;
   Application.OnActivate := @AppActivate;
   Application.OnDeActivate := @AppDeActivate;
   Application.OnShowHint := @AppShowHint;
@@ -1249,7 +1250,6 @@ begin
   HMMainForm := HotMan.Register(Self, HotkeysCategory);
   HotMan.Register(edtCommand, 'Command Line');
 
-  CreateFilePanels;
 
   FDrivesListPopup := TDrivesListPopup.Create(Self, Self);
   FDrivesListPopup.OnDriveSelected := @DriveListDriveSelected;
@@ -4429,6 +4429,8 @@ end;
 procedure TfrmMain.FormResize(Sender: TObject);
 begin
   UpdatePrompt;
+  // Recalculate the size of the file panels.
+  pnlLeftResize(Sender);
 end;
 
 procedure TfrmMain.lblDriveInfoResize(Sender: TObject);
@@ -4595,7 +4597,9 @@ begin
                                    ACellHeight);
     FPanels[I].UpdateLayout;
   end;
+
 end;
+
 
 procedure TfrmMain.pnlLeftResize(Sender: TObject);
 begin
@@ -5657,10 +5661,12 @@ var
   RootNode, TabNode, ViewNode: TXmlNode;
 begin
   RootNode := AConfig.FindNode(AConfig.RootNode, ABranch, True);
-  if ANoteBook = nbLeft then
-    TabsSection := 'Left'
+  case ANoteBook.PanelIndex of
+    0: TabsSection := 'Left';
+    1: TabsSection := 'Right';
   else
-    TabsSection := 'Right';
+    TabsSection := 'Panel' + IntToStr(Ord(ANoteBook.PanelIndex) + 1);
+  end;
   RootNode := AConfig.FindNode(RootNode, TabsSection, True);
 
   AConfig.ClearNode(RootNode);
@@ -5834,6 +5840,10 @@ begin
 end;
 
 procedure TfrmMain.UpdateWindowView;
+var
+  F: TextFile;
+  CC: TControl;
+  K: Integer;
 
   procedure UpdateNoteBook(NoteBook: TFileViewNotebook);
   var
@@ -5923,13 +5933,11 @@ begin
       APanel.pbxDrive.Visible := gDriveInd;
       APanel.ToolsPanel.Visible := gDrivesListButton or gDriveInd or APanel.lblDriveInfo.Visible;
       APanel.ToolsPanel.DoubleBuffered := True;
-      APanel.UpdateAnchors;
       APanel.UpdateLayout;
     end;
 
     // Create disk panels after assigning parent.
     UpdateDiskCount; // Update list of showed drives
-    (*/ Disk Panels *)
     (*/ Disk Panels *)
 
     FDrivesListPopup.UpdateView;
@@ -6485,6 +6493,7 @@ end;
 procedure TfrmMain.LoadTabs;
 var
   AConfig: TXmlConfig;
+  I: Integer;
 begin
   if gConfig.FindNode(gConfig.RootNode, 'Tabs/OpenedTabs') <> nil then
     AConfig:= gConfig
@@ -6495,6 +6504,8 @@ begin
   try
     LoadTabsXml(AConfig, 'Tabs/OpenedTabs/Left', nbLeft);
     LoadTabsXml(AConfig, 'Tabs/OpenedTabs/Right', nbRight);
+    LoadTabsXml(AConfig, 'Tabs/OpenedTabs/Panel3', GetPanelNotebook(2));
+    LoadTabsXml(AConfig, 'Tabs/OpenedTabs/Panel4', GetPanelNotebook(3));
   finally
     if (AConfig <> gConfig) then AConfig.Free;
   end;
@@ -6510,8 +6521,9 @@ begin
   if gDelayLoadingTabs then
   begin
     // Load only the current active tab of each notebook.
-    FrameLeft.Flags  := FrameLeft.Flags  - [fvfDelayLoadingFiles];
-    FrameRight.Flags := FrameRight.Flags - [fvfDelayLoadingFiles];
+    for I := 0 to FILE_PANEL_COUNT - 1 do
+      if Assigned(PanelFrame(TFilePanelIndex(I))) then
+        PanelFrame(TFilePanelIndex(I)).Flags := PanelFrame(TFilePanelIndex(I)).Flags - [fvfDelayLoadingFiles];
   end;
 end;
 
@@ -6738,6 +6750,8 @@ begin
       try
         SaveTabsXml(AConfig, 'Tabs/OpenedTabs/', nbLeft, gSaveDirHistory);
         SaveTabsXml(AConfig, 'Tabs/OpenedTabs/', nbRight, gSaveDirHistory);
+        SaveTabsXml(AConfig, 'Tabs/OpenedTabs/', GetPanelNotebook(2), gSaveDirHistory);
+        SaveTabsXml(AConfig, 'Tabs/OpenedTabs/', GetPanelNotebook(3), gSaveDirHistory);
         AConfig.Save;
       finally
         AConfig.Free;
@@ -6821,6 +6835,12 @@ procedure TfrmMain.UpdateDriveToolbarSelection(DriveToolbar: TKAStoolBar; FileVi
 var
   DriveIndex: Integer;
 begin
+  if not Assigned(FileView) then
+  begin
+    DriveToolbar.UncheckAllButtons;
+    Exit;
+  end;
+
   DriveIndex := FindMatchingDrive(FileView.CurrentAddress, FileView.CurrentPath);
   if (DriveIndex >= 0) and (DriveIndex < DriveToolbar.ButtonCount) then
     DriveToolbar.Buttons[DriveIndex].Down := True
@@ -6834,6 +6854,13 @@ var
   Drive: PDrive;
   BitmapTmp: Graphics.TBitmap = nil;
 begin
+  if not Assigned(FileView) then
+  begin
+    DriveButton.Tag := -1;
+    DriveButton.Caption := '';
+    Exit;
+  end;
+
   DriveButton.Tag := FindMatchingDrive(FileView.CurrentAddress, FileView.CurrentPath);
 
   if not gDrivesListButton then

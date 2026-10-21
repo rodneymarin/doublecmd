@@ -41,6 +41,22 @@ uses
   KASToolBar,
   KASToolPanel;
 
+const
+  {en
+     Height of the tools row.
+  }
+  FILE_PANEL_TOOLS_HEIGHT = 28;
+
+  {en
+     Width of the drive list button.
+  }
+  FILE_PANEL_DRIVE_BUTTON_WIDTH = 48;
+
+  {en
+     Width of the small buttons of the tools row.
+  }
+  FILE_PANEL_SMALL_BUTTON_WIDTH = 23;
+
 type
 
   { TFilePanel }
@@ -91,12 +107,6 @@ type
      }
     procedure UpdateLayout;
 
-    {en
-       Re-applies the anchoring of the drive info controls. Must be called
-       when the "drives list button" option changes.
-     }
-    procedure UpdateAnchors;
-
     property Index: TFilePanelIndex read FIndex;
     property Container: TPanel read FContainer;
     property DiskPanel: TKASToolPanel read FDiskPanel;
@@ -136,146 +146,112 @@ begin
   FContainer.Parent := AParent;
   FContainer.Align := alNone;
   FContainer.BevelOuter := bvNone;
+  FContainer.Caption := '';
 
-  // The tools row is created first, so that the disk panel (which is
-  // created later) is placed above it by the alignment code.
   FToolsPanel := TPanel.Create(AOwner);
   FToolsPanel.Name := Format('pnlFilePanel%dTools', [Ord(AIndex) + 1]);
   FToolsPanel.Parent := FContainer;
   FToolsPanel.Align := alNone;
+  FToolsPanel.AutoSize := False;
   FToolsPanel.BevelInner := bvNone;
   FToolsPanel.BevelOuter := bvNone;
-  FToolsPanel.ChildSizing.TopBottomSpacing := 2;
+  FToolsPanel.Caption := '';
   FToolsPanel.DoubleBuffered := True;
+  FToolsPanel.Height := FILE_PANEL_TOOLS_HEIGHT;
 
   FDiskPanel := TKASToolPanel.Create(AOwner);
   FDiskPanel.Name := Format('pnlFilePanel%dDisk', [Ord(AIndex) + 1]);
   FDiskPanel.Parent := FContainer;
   FDiskPanel.Align := alNone;
   FDiskPanel.AutoSize := True;
+  FDiskPanel.Caption := '';
   FDiskPanel.EdgeBorders := [ebTop, ebBottom];
 
   FDiskToolBar := TKASToolBar.Create(AOwner);
   FDiskToolBar.Name := Format('dskFilePanel%d', [Ord(AIndex) + 1]);
   FDiskToolBar.Parent := FDiskPanel;
 
+  // The controls of the tools row are aligned automatically by the LCL.
+  // The order of creation is important for the right aligned buttons:
+  // the last created one is placed closest to the right edge.
   FbtnDrive := TSpeedButton.Create(FToolsPanel);
   FbtnDrive.Name := Format('btnFilePanel%dDrive', [Ord(AIndex) + 1]);
   FbtnDrive.Parent := FToolsPanel;
-  FbtnDrive.Align := alLeft;
+  FbtnDrive.Align := alNone;
   FbtnDrive.Caption := '';
   FbtnDrive.Constraints.MinHeight := 24;
-  FbtnDrive.Width := 48;
+  FbtnDrive.Width := FILE_PANEL_DRIVE_BUTTON_WIDTH;
   FbtnDrive.OnClick := @btnDriveClick;
-
-  FbtnEqual := TSpeedButton.Create(FToolsPanel);
-  FbtnEqual.Name := Format('btnFilePanel%dEqual', [Ord(AIndex) + 1]);
-  FbtnEqual.Parent := FToolsPanel;
-  FbtnEqual.Caption := '<';
-  FbtnEqual.Constraints.MinHeight := 24;
-  FbtnEqual.Hint := 'Show current directory of another panel in this panel';
-  FbtnEqual.Width := 23;
-  FbtnEqual.OnClick := @btnEqualClick;
-
-  FbtnHome := TSpeedButton.Create(FToolsPanel);
-  FbtnHome.Name := Format('btnFilePanel%dHome', [Ord(AIndex) + 1]);
-  FbtnHome.Parent := FToolsPanel;
-  FbtnHome.Caption := '~';
-  FbtnHome.Constraints.MinHeight := 24;
-  FbtnHome.Hint := 'Go to home directory';
-  FbtnHome.Width := 23;
-  FbtnHome.OnClick := @btnClick;
-
-  FbtnUp := TSpeedButton.Create(FToolsPanel);
-  FbtnUp.Name := Format('btnFilePanel%dUp', [Ord(AIndex) + 1]);
-  FbtnUp.Parent := FToolsPanel;
-  FbtnUp.Caption := '..';
-  FbtnUp.Constraints.MinHeight := 24;
-  FbtnUp.Hint := 'Go to parent directory';
-  FbtnUp.Width := 23;
-  FbtnUp.OnClick := @btnClick;
-
-  FbtnRoot := TSpeedButton.Create(FToolsPanel);
-  FbtnRoot.Name := Format('btnFilePanel%dRoot', [Ord(AIndex) + 1]);
-  FbtnRoot.Parent := FToolsPanel;
-  FbtnRoot.Caption := DirectorySeparator;
-  FbtnRoot.Constraints.MinHeight := 24;
-  FbtnRoot.Hint := 'Go to root directory';
-  FbtnRoot.Width := 23;
-  FbtnRoot.OnClick := @btnClick;
-
-  FbtnHotList := TSpeedButton.Create(FToolsPanel);
-  FbtnHotList.Name := Format('btnFilePanel%dHotList', [Ord(AIndex) + 1]);
-  FbtnHotList.Parent := FToolsPanel;
-  FbtnHotList.Caption := '*';
-  FbtnHotList.Constraints.MinHeight := 24;
-  FbtnHotList.Hint := 'Directory Hotlist';
-  FbtnHotList.Width := 23;
-  FbtnHotList.OnClick := @btnClick;
 
   FlblDriveInfo := TLabel.Create(FToolsPanel);
   FlblDriveInfo.Name := Format('lblFilePanel%dDriveInfo', [Ord(AIndex) + 1]);
   FlblDriveInfo.Parent := FToolsPanel;
+  FlblDriveInfo.Align := alNone;
   FlblDriveInfo.Alignment := taCenter;
-  FlblDriveInfo.BorderSpacing.Left := 2;
-  FlblDriveInfo.BorderSpacing.Right := 2;
+  FlblDriveInfo.Caption := '';
   FlblDriveInfo.ParentColor := False;
   FlblDriveInfo.OnDblClick := @lblDriveInfoDblClick;
   FlblDriveInfo.OnResize := @lblDriveInfoResize;
 
+  FbtnHotList := TSpeedButton.Create(FToolsPanel);
+  FbtnHotList.Name := Format('btnFilePanel%dHotList', [Ord(AIndex) + 1]);
+  FbtnHotList.Parent := FToolsPanel;
+  FbtnHotList.Align := alNone;
+  FbtnHotList.Caption := '*';
+  FbtnHotList.Constraints.MinHeight := 24;
+  FbtnHotList.Hint := 'Directory Hotlist';
+  FbtnHotList.Width := FILE_PANEL_SMALL_BUTTON_WIDTH;
+  FbtnHotList.OnClick := @btnClick;
+
+  FbtnRoot := TSpeedButton.Create(FToolsPanel);
+  FbtnRoot.Name := Format('btnFilePanel%dRoot', [Ord(AIndex) + 1]);
+  FbtnRoot.Parent := FToolsPanel;
+  FbtnRoot.Align := alNone;
+  FbtnRoot.Caption := DirectorySeparator;
+  FbtnRoot.Constraints.MinHeight := 24;
+  FbtnRoot.Hint := 'Go to root directory';
+  FbtnRoot.Width := FILE_PANEL_SMALL_BUTTON_WIDTH;
+  FbtnRoot.OnClick := @btnClick;
+
+  FbtnUp := TSpeedButton.Create(FToolsPanel);
+  FbtnUp.Name := Format('btnFilePanel%dUp', [Ord(AIndex) + 1]);
+  FbtnUp.Parent := FToolsPanel;
+  FbtnUp.Align := alNone;
+  FbtnUp.Caption := '..';
+  FbtnUp.Constraints.MinHeight := 24;
+  FbtnUp.Hint := 'Go to parent directory';
+  FbtnUp.Width := FILE_PANEL_SMALL_BUTTON_WIDTH;
+  FbtnUp.OnClick := @btnClick;
+
+  FbtnHome := TSpeedButton.Create(FToolsPanel);
+  FbtnHome.Name := Format('btnFilePanel%dHome', [Ord(AIndex) + 1]);
+  FbtnHome.Parent := FToolsPanel;
+  FbtnHome.Align := alNone;
+  FbtnHome.Caption := '~';
+  FbtnHome.Constraints.MinHeight := 24;
+  FbtnHome.Hint := 'Go to home directory';
+  FbtnHome.Width := FILE_PANEL_SMALL_BUTTON_WIDTH;
+  FbtnHome.OnClick := @btnClick;
+
+  FbtnEqual := TSpeedButton.Create(FToolsPanel);
+  FbtnEqual.Name := Format('btnFilePanel%dEqual', [Ord(AIndex) + 1]);
+  FbtnEqual.Parent := FToolsPanel;
+  FbtnEqual.Align := alNone;
+  FbtnEqual.Caption := '<';
+  FbtnEqual.Constraints.MinHeight := 24;
+  FbtnEqual.Hint := 'Show current directory of another panel in this panel';
+  FbtnEqual.Width := FILE_PANEL_SMALL_BUTTON_WIDTH;
+  FbtnEqual.OnClick := @btnEqualClick;
+
   FpbxDrive := TPaintBox.Create(FToolsPanel);
   FpbxDrive.Name := Format('pbxFilePanel%dDrive', [Ord(AIndex) + 1]);
   FpbxDrive.Parent := FToolsPanel;
+  FpbxDrive.Align := alNone;
+  FpbxDrive.Caption := '';
   FpbxDrive.Height := 10;
-  FpbxDrive.BorderSpacing.Left := 2;
-  FpbxDrive.BorderSpacing.Right := 2;
   FpbxDrive.OnPaint := @pbxDrivePaint;
 
-  // Anchor the buttons to the right edge of the tools row, from the right
-  // to the left: equal, home, up, root, hotlist.
-  FbtnEqual.AnchorSide[akTop].Control := FToolsPanel;
-  FbtnEqual.AnchorSide[akTop].Side := asrTop;
-  FbtnEqual.AnchorSide[akRight].Control := FToolsPanel;
-  FbtnEqual.AnchorSide[akRight].Side := asrBottom;
-  FbtnEqual.AnchorSide[akBottom].Control := FToolsPanel;
-  FbtnEqual.AnchorSide[akBottom].Side := asrBottom;
-
-  FbtnHome.AnchorSide[akTop].Control := FToolsPanel;
-  FbtnHome.AnchorSide[akTop].Side := asrTop;
-  FbtnHome.AnchorSide[akRight].Control := FbtnEqual;
-  FbtnHome.AnchorSide[akRight].Side := asrLeft;
-  FbtnHome.AnchorSide[akBottom].Control := FToolsPanel;
-  FbtnHome.AnchorSide[akBottom].Side := asrBottom;
-
-  FbtnUp.AnchorSide[akTop].Control := FToolsPanel;
-  FbtnUp.AnchorSide[akTop].Side := asrTop;
-  FbtnUp.AnchorSide[akRight].Control := FbtnHome;
-  FbtnUp.AnchorSide[akRight].Side := asrLeft;
-  FbtnUp.AnchorSide[akBottom].Control := FToolsPanel;
-  FbtnUp.AnchorSide[akBottom].Side := asrBottom;
-
-  FbtnRoot.AnchorSide[akTop].Control := FToolsPanel;
-  FbtnRoot.AnchorSide[akTop].Side := asrTop;
-  FbtnRoot.AnchorSide[akRight].Control := FbtnUp;
-  FbtnRoot.AnchorSide[akRight].Side := asrLeft;
-  FbtnRoot.AnchorSide[akBottom].Control := FToolsPanel;
-  FbtnRoot.AnchorSide[akBottom].Side := asrBottom;
-
-  FbtnHotList.AnchorSide[akTop].Control := FToolsPanel;
-  FbtnHotList.AnchorSide[akTop].Side := asrTop;
-  FbtnHotList.AnchorSide[akRight].Control := FbtnRoot;
-  FbtnHotList.AnchorSide[akRight].Side := asrLeft;
-  FbtnHotList.AnchorSide[akBottom].Control := FToolsPanel;
-  FbtnHotList.AnchorSide[akBottom].Side := asrBottom;
-
-  FpbxDrive.AnchorSide[akTop].Control := FlblDriveInfo;
-  FpbxDrive.AnchorSide[akTop].Side := asrBottom;
-  FpbxDrive.AnchorSide[akLeft].Control := FlblDriveInfo;
-  FpbxDrive.AnchorSide[akLeft].Side := asrLeft;
-  FpbxDrive.AnchorSide[akRight].Control := FlblDriveInfo;
-  FpbxDrive.AnchorSide[akRight].Side := asrRight;
-
-  UpdateAnchors;
+  UpdateLayout;
 end;
 
 destructor TFilePanel.Destroy;
@@ -299,49 +275,80 @@ begin
     Result := nil;
 end;
 
-procedure TFilePanel.UpdateAnchors;
-begin
-  FlblDriveInfo.AnchorSide[akTop].Control := FToolsPanel;
-  FlblDriveInfo.AnchorSide[akTop].Side := asrTop;
-  FlblDriveInfo.AnchorSide[akBottom].Control := FToolsPanel;
-  FlblDriveInfo.AnchorSide[akBottom].Side := asrBottom;
-
-  if FbtnDrive.Visible then
-  begin
-    FlblDriveInfo.AnchorSide[akLeft].Control := FbtnDrive;
-    FlblDriveInfo.AnchorSide[akLeft].Side := asrRight;
-    FlblDriveInfo.AnchorSide[akRight].Control := FbtnHotList;
-    FlblDriveInfo.AnchorSide[akRight].Side := asrLeft;
-  end
-  else
-  begin
-    FlblDriveInfo.AnchorSide[akLeft].Control := FToolsPanel;
-    FlblDriveInfo.AnchorSide[akLeft].Side := asrLeft;
-    FlblDriveInfo.AnchorSide[akRight].Control := FToolsPanel;
-    FlblDriveInfo.AnchorSide[akRight].Side := asrRight;
-  end;
-end;
-
 procedure TFilePanel.UpdateLayout;
 var
   Top: Integer;
+  AWidth, AHeight, X, AButtonHeight: Integer;
 begin
+  if not Assigned(FContainer) then Exit;
+
   Top := 0;
+  AWidth := FContainer.Width;
 
   if FDiskPanel.Visible then
   begin
-    FDiskPanel.SetBounds(0, Top, FContainer.Width, FDiskPanel.Height);
+    FDiskPanel.SetBounds(0, Top, AWidth, FDiskPanel.Height);
     Inc(Top, FDiskPanel.Height);
   end;
 
   if FToolsPanel.Visible then
   begin
-    FToolsPanel.SetBounds(0, Top, FContainer.Width, FToolsPanel.Height);
-    Inc(Top, FToolsPanel.Height);
+    AHeight := FToolsPanel.Height;
+    FToolsPanel.SetBounds(0, Top, AWidth, AHeight);
+
+    AButtonHeight := AHeight - 2;
+    if AButtonHeight < 24 then
+      AButtonHeight := 24;
+
+    // The small buttons are placed from the right edge to the left.
+    X := AWidth;
+    if FbtnEqual.Visible then
+    begin
+      Dec(X, FbtnEqual.Width);
+      FbtnEqual.SetBounds(X, 1, FbtnEqual.Width, AButtonHeight);
+    end;
+    if FbtnHome.Visible then
+    begin
+      Dec(X, FbtnHome.Width);
+      FbtnHome.SetBounds(X, 1, FbtnHome.Width, AButtonHeight);
+    end;
+    if FbtnUp.Visible then
+    begin
+      Dec(X, FbtnUp.Width);
+      FbtnUp.SetBounds(X, 1, FbtnUp.Width, AButtonHeight);
+    end;
+    if FbtnRoot.Visible then
+    begin
+      Dec(X, FbtnRoot.Width);
+      FbtnRoot.SetBounds(X, 1, FbtnRoot.Width, AButtonHeight);
+    end;
+    if FbtnHotList.Visible then
+    begin
+      Dec(X, FbtnHotList.Width);
+      FbtnHotList.SetBounds(X, 1, FbtnHotList.Width, AButtonHeight);
+    end;
+
+    if FbtnDrive.Visible then
+      FbtnDrive.SetBounds(0, 1, FbtnDrive.Width, AButtonHeight);
+
+    if X <= FbtnDrive.Width + 4 then
+      X := FbtnDrive.Width + 4;
+
+    if FlblDriveInfo.Visible then
+      FlblDriveInfo.SetBounds(FbtnDrive.Width + 2, 1, X - FbtnDrive.Width - 4,
+                              AButtonHeight - 2)
+    else if FpbxDrive.Visible then
+      FpbxDrive.SetBounds(FbtnDrive.Width + 2, 1, X - FbtnDrive.Width - 4, 10);
+
+    Inc(Top, AHeight);
   end;
 
+  // The free space indicator is drawn over the lower part of the drive
+  // info label.
+
+
   if Assigned(FNotebook) then
-    FNotebook.SetBounds(0, Top, FContainer.Width, FContainer.Height - Top);
+    FNotebook.SetBounds(0, Top, AWidth, FContainer.Height - Top);
 end;
 
 procedure TFilePanel.btnClick(Sender: TObject);
