@@ -344,7 +344,7 @@ end;"/>
         <PackageName Value="Image32"/>
       </Item13>
     </RequiredPackages>
-    <Units Count="307">
+    <Units Count="309">
       <Unit0>
         <Filename Value="doublecmd.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -2213,6 +2213,16 @@ end;"/>
         <HasResources Value="True"/>
         <UnitName Value="fSyncDirsSelectPropertiesDlg"/>
       </Unit306>
+      <Unit307>
+        <Filename Value="ufilepanel.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="uFilePanel"/>
+      </Unit307>
+      <Unit308>
+        <Filename Value="ufilepanelselectdlg.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="uFilePanelSelectDlg"/>
+      </Unit308>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

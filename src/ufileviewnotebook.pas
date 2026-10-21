@@ -115,7 +115,7 @@ type
 
   TFileViewNotebook = class(TPageControl)
   private
-    FNotebookSide: TFilePanelSelect;
+    FNotebookIndex: TFilePanelIndex;
     FStartDrag: Boolean;
     FDraggedPageIndex: Integer;
     FTabDblClicked: Boolean;
@@ -149,7 +149,7 @@ type
 
   public
     constructor Create(ParentControl: TWinControl;
-                       NotebookSide: TFilePanelSelect); reintroduce;
+                       NotebookIndex: TFilePanelIndex); reintroduce;
 {$IFDEF LCLWIN32}
     {en
        Removes the rectangle of the pages contents from erasing background to reduce flickering.
@@ -180,7 +180,7 @@ type
     property DoubleClickPageIndex: Integer read FLastMouseDownPageIndex;
     property Page[Index: Integer]: TFileViewPage read GetPage;
     property View[Index: Integer]: TFileView read GetFileViewOnPage; default;
-    property Side: TFilePanelSelect read FNotebookSide;
+    property PanelIndex: TFilePanelIndex read FNotebookIndex;
 
   published
     property OnDblClick;
@@ -422,7 +422,7 @@ end;
 // -- TFileViewNotebook -------------------------------------------------------
 
 constructor TFileViewNotebook.Create(ParentControl: TWinControl;
-                                     NotebookSide: TFilePanelSelect);
+                                     NotebookIndex: TFilePanelIndex);
 begin
   inherited Create(ParentControl);
   ControlStyle := ControlStyle + [csNoFocus];
@@ -432,7 +432,7 @@ begin
   ShowHint := True;
 
   FHintPageIndex := -1;
-  FNotebookSide := NotebookSide;
+  FNotebookIndex := NotebookIndex;
   FStartDrag := False;
 
   OnShowHint := @TabShowHint;
