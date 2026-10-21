@@ -59,6 +59,14 @@ const
 
 type
 
+  {en
+     Event of a button of the file panel tools row. The index of the panel
+     which owns the button is passed explicitly, because the Tag property of
+     the buttons is used for other purposes.
+   }
+  TFilePanelButtonEvent = procedure(Sender: TObject;
+                                    aPanelIndex: TFilePanelIndex) of object;
+
   { TFilePanel }
 
   TFilePanel = class(TComponent)
@@ -78,15 +86,20 @@ type
     FpbxDrive: TPaintBox;
     FlblDriveInfo: TLabel;
 
-    FOnButtonClick: TNotifyEvent;
-    FOnDriveButtonClick: TNotifyEvent;
-    FOnEqualButtonClick: TNotifyEvent;
+    FOnButtonClick: TFilePanelButtonEvent;
+    FOnHotListButtonClick: TFilePanelButtonEvent;
+    FOnDriveButtonClick: TFilePanelButtonEvent;
+    FOnDriveButtonMouseUp: TMouseEvent;
+    FOnEqualButtonClick: TFilePanelButtonEvent;
     FOnDriveInfoResize: TNotifyEvent;
     FOnDriveInfoDblClick: TNotifyEvent;
     FOnDrivePaint: TNotifyEvent;
 
     procedure btnClick(Sender: TObject);
+    procedure btnHotListClick(Sender: TObject);
     procedure btnDriveClick(Sender: TObject);
+    procedure btnDriveMouseUp(Sender: TObject; Button: TMouseButton;
+                             Shift: TShiftState; X, Y: Integer);
     procedure btnEqualClick(Sender: TObject);
     procedure lblDriveInfoResize(Sender: TObject);
     procedure lblDriveInfoDblClick(Sender: TObject);
@@ -123,9 +136,11 @@ type
     property lblDriveInfo: TLabel read FlblDriveInfo;
     property ActiveView: TFileView read GetActiveView;
 
-    property OnButtonClick: TNotifyEvent read FOnButtonClick write FOnButtonClick;
-    property OnDriveButtonClick: TNotifyEvent read FOnDriveButtonClick write FOnDriveButtonClick;
-    property OnEqualButtonClick: TNotifyEvent read FOnEqualButtonClick write FOnEqualButtonClick;
+    property OnButtonClick: TFilePanelButtonEvent read FOnButtonClick write FOnButtonClick;
+    property OnHotListButtonClick: TFilePanelButtonEvent read FOnHotListButtonClick write FOnHotListButtonClick;
+    property OnDriveButtonClick: TFilePanelButtonEvent read FOnDriveButtonClick write FOnDriveButtonClick;
+    property OnDriveButtonMouseUp: TMouseEvent read FOnDriveButtonMouseUp write FOnDriveButtonMouseUp;
+    property OnEqualButtonClick: TFilePanelButtonEvent read FOnEqualButtonClick write FOnEqualButtonClick;
     property OnDriveInfoResize: TNotifyEvent read FOnDriveInfoResize write FOnDriveInfoResize;
     property OnDriveInfoDblClick: TNotifyEvent read FOnDriveInfoDblClick write FOnDriveInfoDblClick;
     property OnDrivePaint: TNotifyEvent read FOnDrivePaint write FOnDrivePaint;
@@ -182,6 +197,7 @@ begin
   FbtnDrive.Constraints.MinHeight := 24;
   FbtnDrive.Width := FILE_PANEL_DRIVE_BUTTON_WIDTH;
   FbtnDrive.OnClick := @btnDriveClick;
+  FbtnDrive.OnMouseUp := @btnDriveMouseUp;
 
   FlblDriveInfo := TLabel.Create(FToolsPanel);
   FlblDriveInfo.Name := Format('lblFilePanel%dDriveInfo', [Ord(AIndex) + 1]);
@@ -201,7 +217,7 @@ begin
   FbtnHotList.Constraints.MinHeight := 24;
   FbtnHotList.Hint := 'Directory Hotlist';
   FbtnHotList.Width := FILE_PANEL_SMALL_BUTTON_WIDTH;
-  FbtnHotList.OnClick := @btnClick;
+  FbtnHotList.OnClick := @btnHotListClick;
 
   FbtnRoot := TSpeedButton.Create(FToolsPanel);
   FbtnRoot.Name := Format('btnFilePanel%dRoot', [Ord(AIndex) + 1]);
@@ -354,19 +370,32 @@ end;
 procedure TFilePanel.btnClick(Sender: TObject);
 begin
   if Assigned(FOnButtonClick) then
-    FOnButtonClick(Sender);
+    FOnButtonClick(Sender, FIndex);
+end;
+
+procedure TFilePanel.btnHotListClick(Sender: TObject);
+begin
+  if Assigned(FOnHotListButtonClick) then
+    FOnHotListButtonClick(Sender, FIndex);
 end;
 
 procedure TFilePanel.btnDriveClick(Sender: TObject);
 begin
   if Assigned(FOnDriveButtonClick) then
-    FOnDriveButtonClick(Sender);
+    FOnDriveButtonClick(Sender, FIndex);
+end;
+
+procedure TFilePanel.btnDriveMouseUp(Sender: TObject; Button: TMouseButton;
+                                    Shift: TShiftState; X, Y: Integer);
+begin
+  if Assigned(FOnDriveButtonMouseUp) then
+    FOnDriveButtonMouseUp(Sender, Button, Shift, X, Y);
 end;
 
 procedure TFilePanel.btnEqualClick(Sender: TObject);
 begin
   if Assigned(FOnEqualButtonClick) then
-    FOnEqualButtonClick(Sender);
+    FOnEqualButtonClick(Sender, FIndex);
 end;
 
 procedure TFilePanel.lblDriveInfoResize(Sender: TObject);

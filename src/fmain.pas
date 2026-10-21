@@ -568,10 +568,10 @@ type
     procedure mnuAllOperPauseClick(Sender: TObject);
     procedure mnuAllOperProgressClick(Sender: TObject);
     procedure btnF8Click(Sender: TObject);
-    procedure PanelButtonClickEvent(Sender: TObject);
-    procedure PanelHotListClick(Sender: TObject);
-    procedure PanelDriveButtonClick(Sender: TObject);
-    procedure PanelEqualButtonClick(Sender: TObject);
+    procedure PanelButtonClickEvent(Sender: TObject; AIndex: TFilePanelIndex);
+    procedure PanelHotListClick(Sender: TObject; AIndex: TFilePanelIndex);
+    procedure PanelDriveButtonClick(Sender: TObject; AIndex: TFilePanelIndex);
+    procedure PanelEqualButtonClick(Sender: TObject; AIndex: TFilePanelIndex);
     procedure btnDriveMouseUp(Sender: TObject; Button: TMouseButton; {%H-}Shift: TShiftState; X, Y: Integer);
     procedure ConsoleSplitterCanResize(Sender: TObject; var NewSize: Integer;
       var {%H-}Accept: Boolean);
@@ -1337,19 +1337,16 @@ begin
 {$ENDIF}
 end;
 
-procedure TfrmMain.PanelButtonClickEvent(Sender: TObject);
+procedure TfrmMain.PanelButtonClickEvent(Sender: TObject; AIndex: TFilePanelIndex);
 begin
-  PanelButtonClick(Sender as TSpeedButton,
-                   PanelFrame(TFilePanelIndex((Sender as TSpeedButton).Tag)));
+  PanelButtonClick(Sender as TSpeedButton, PanelFrame(AIndex));
 end;
 
-procedure TfrmMain.PanelHotListClick(Sender: TObject);
+procedure TfrmMain.PanelHotListClick(Sender: TObject; AIndex: TFilePanelIndex);
 var
-  AIndex: TFilePanelIndex;
   APanel: TFilePanel;
   P: TPoint;
 begin
-  AIndex := TFilePanelIndex((Sender as TSpeedButton).Tag);
   APanel := GetPanel(AIndex);
   if tb_activate_panel_on_click in gDirTabOptions then
     SetActiveFrame(AIndex);
@@ -1362,18 +1359,15 @@ begin
   end;
 end;
 
-procedure TfrmMain.PanelDriveButtonClick(Sender: TObject);
+procedure TfrmMain.PanelDriveButtonClick(Sender: TObject; AIndex: TFilePanelIndex);
 begin
-  ShowDrivesList(TFilePanelIndex((Sender as TSpeedButton).Tag));
+  ShowDrivesList(AIndex);
 end;
 
-procedure TfrmMain.PanelEqualButtonClick(Sender: TObject);
+procedure TfrmMain.PanelEqualButtonClick(Sender: TObject; AIndex: TFilePanelIndex);
 var
-  AIndex: TFilePanelIndex;
   ASourceFrame: TFileView;
 begin
-  AIndex := TFilePanelIndex((Sender as TSpeedButton).Tag);
-
   // Ask the user from which panel the directory should be taken.
   if not SelectTargetPanel('Take the directory from panel', AIndex) then
     Exit;
@@ -4708,7 +4702,9 @@ begin
   begin
     APanel := TFilePanel.Create(Self, TFilePanelIndex(I), pnlNotebooks);
     APanel.OnButtonClick := @PanelButtonClickEvent;
+    APanel.OnHotListButtonClick := @PanelHotListClick;
     APanel.OnDriveButtonClick := @PanelDriveButtonClick;
+    APanel.OnDriveButtonMouseUp := @btnDriveMouseUp;
     APanel.OnEqualButtonClick := @PanelEqualButtonClick;
     APanel.OnDriveInfoResize := @lblDriveInfoResize;
     APanel.OnDriveInfoDblClick := @lblDriveInfoDblClick;
