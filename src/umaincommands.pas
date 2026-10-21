@@ -285,6 +285,7 @@ type
    procedure cm_SaveSelectionToFile(const Params: array of string);
    procedure cm_LoadSelectionFromFile(const Params: array of string);
    procedure cm_LoadSelectionFromClip(const Params: array of string);
+   function AskTargetPanel(const ATitle: String): Boolean;
    procedure cm_SyncDirs(const Params: array of string);
    procedure cm_Search(const Params: array of string);
    procedure cm_HardLink(const Params: array of string);
@@ -1134,6 +1135,9 @@ begin
   begin
     if (ActiveNotebook.ActivePage.LockState = tlsPathLocked) or
        (NotActiveNotebook.ActivePage.LockState = tlsPathLocked) then
+      Exit;
+
+    if not AskTargetPanel('Exchange with panel') then
       Exit;
 
     AFileView:= ActiveFrame;
@@ -2487,6 +2491,11 @@ end;
 //   0/false           - don't show confirmation
 // queueid=            - by default put to this queue
 //   <queue_identifier>
+function TMainCommands.AskTargetPanel(const ATitle: String): Boolean;
+begin
+  Result := frmMain.SelectTargetPanel(ATitle);
+end;
+
 procedure TMainCommands.cm_Copy(const Params: array of string);
 var
   bConfirmation, HasQueueId: Boolean;
@@ -2494,6 +2503,9 @@ var
 begin
   bConfirmation := focCopy in gFileOperationsConfirmations;
   ReadCopyRenameParams(Params, bConfirmation, HasQueueId, QueueIdentifier);
+
+  if not AskTargetPanel('Copy to panel') then
+    Exit;
 
   if HasQueueId then
     frmMain.CopyFiles(frmMain.NotActiveFrame.CurrentPath, bConfirmation, QueueIdentifier)
@@ -2503,6 +2515,9 @@ end;
 
 procedure TMainCommands.cm_CopyNoAsk(const Params: array of string);
 begin
+  if not AskTargetPanel('Copy to panel') then
+    Exit;
+
   frmMain.CopyFiles(frmMain.NotActiveFrame.CurrentPath, False);
 end;
 
@@ -2520,6 +2535,9 @@ begin
   bConfirmation := focMove in gFileOperationsConfirmations;
   ReadCopyRenameParams(Params, bConfirmation, HasQueueId, QueueIdentifier);
 
+  if not AskTargetPanel('Move to panel') then
+    Exit;
+
   if HasQueueId then
     frmMain.MoveFiles(frmMain.NotActiveFrame.CurrentPath, bConfirmation, QueueIdentifier)
   else
@@ -2528,6 +2546,9 @@ end;
 
 procedure TMainCommands.cm_RenameNoAsk(const Params: array of string);
 begin
+  if not AskTargetPanel('Move to panel') then
+    Exit;
+
   frmMain.MoveFiles(frmMain.NotActiveFrame.CurrentPath, False);
 end;
 
@@ -4727,6 +4748,9 @@ var
   SourceFiles: TDisplayFiles = nil;
   TargetFiles: TDisplayFiles = nil;
 begin
+  if not AskTargetPanel('Compare with panel') then
+    Exit;
+
   AFiles := True;
   AFolders := False;
   for Param in Params do

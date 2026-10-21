@@ -4749,7 +4749,8 @@ begin
       APath := '';
 
     Choices[Count].Index := I;
-    Choices[Count].Caption := Format('Panel %d - %s', [I + 1, APath]);
+    Choices[Count].Caption := Format('Panel %d (%s) - %s',
+                                    [I + 1, FilePanelPositionName(TFilePanelIndex(I)), APath]);
     Choices[Count].Path := APath;
     Inc(Count);
   end;

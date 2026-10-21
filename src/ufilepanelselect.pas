@@ -46,7 +46,24 @@ type
   }
 function FilePanelIndexOf(aSelect: TFilePanelSelect): TFilePanelIndex;
 
+  {en
+     Returns the human readable position of the file panel in the grid.
+   }
+function FilePanelPositionName(aIndex: TFilePanelIndex): String;
+
 implementation
+
+function FilePanelPositionName(aIndex: TFilePanelIndex): String;
+begin
+  case aIndex of
+    0: Result := 'top left';
+    1: Result := 'top right';
+    2: Result := 'bottom left';
+    3: Result := 'bottom right';
+  else
+    Result := '';
+  end;
+end;
 
 function FilePanelIndexOf(aSelect: TFilePanelSelect): TFilePanelIndex;
 begin
