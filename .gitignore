@@ -34,3 +34,4 @@ lib/
 # Application bundle for Mac OS
 *.app/
 .DS_Store
+components/packagefiles.xml
