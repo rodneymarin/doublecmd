@@ -41,7 +41,7 @@ uses
 
 type
   TDriveSelected = procedure (Sender: TObject; ADriveIndex: Integer;
-    APanel: TFilePanelSelect) of object;
+    APanel: TFilePanelIndex) of object;
 
   { TDrivesListPopup }
 
@@ -49,7 +49,7 @@ type
   private
     FDriveIconSize: Integer;
     FDrivesList: TDrivesList;
-    FPanel: TFilePanelSelect;
+    FPanel: TFilePanelIndex;
     FShortCuts: array of TUTF8Char;
     FAllowSelectDummyRow: Boolean;
     FOnDriveSelected: TDriveSelected;
@@ -119,12 +119,12 @@ type
        @param(ASelectedDriveIndex
               Which drive to pre-select (0..DrivesCount-1).)
     }
-    procedure Show(AtPoint: TPoint; APanel: TFilePanelSelect;
+    procedure Show(AtPoint: TPoint; APanel: TFilePanelIndex;
                    ASelectedDriveIndex: Integer = -1);
 
     procedure SetFocus; override;
 
-    property Panel: TFilePanelSelect read FPanel;
+    property Panel: TFilePanelIndex read FPanel;
     property DrivesCount: Integer read GetDrivesCount;
 
     property OnDriveSelected: TDriveSelected read FOnDriveSelected write FOnDriveSelected;
@@ -215,7 +215,7 @@ begin
   Columns.Items[4].Visible := dlbShowFreeSpace in gDrivesListButtonOptions;
 end;
 
-procedure TDrivesListPopup.Show(AtPoint: TPoint; APanel: TFilePanelSelect;
+procedure TDrivesListPopup.Show(AtPoint: TPoint; APanel: TFilePanelIndex;
                                 ASelectedDriveIndex: Integer = -1);
 begin
   UpdateCells;

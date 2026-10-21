@@ -750,9 +750,7 @@ begin
   begin
     if (SplitPos >= 0) and (SplitPos <= 100) then
     begin
-      // Update splitter position
-      MainSplitterPos:= SplitPos;
-      pnlNotebooksResize(pnlNotebooks);
+      // The panels are always equally sized, so there is nothing to do here.
     end;
   end;
 end;
@@ -1368,7 +1366,7 @@ begin
     DoTransferPath(FrameRight, LeftTabs);
 
     // Destroying active view may have caused losing focus. Restore it if needed.
-    if SelectedPanel = fpLeft then
+    if SelectedPanel = 0 then
       FrameLeft.SetFocus;
   end;
 end;
@@ -1380,7 +1378,7 @@ begin
     DoTransferPath(FrameLeft, RightTabs);
 
     // Destroying active view may have caused losing focus. Restore it if needed.
-    if SelectedPanel = fpRight then
+    if SelectedPanel = 1 then
       FrameRight.SetFocus;
   end;
 end;
@@ -1591,12 +1589,12 @@ end;
 
 procedure TMainCommands.cm_LeftOpenDrives(const Params: array of string);
 begin
-  frmMain.ShowDrivesList(fpLeft);
+  frmMain.ShowDrivesList(0);
 end;
 
 procedure TMainCommands.cm_RightOpenDrives(const Params: array of string);
 begin
-  frmMain.ShowDrivesList(fpRight);
+  frmMain.ShowDrivesList(1);
 end;
 
 procedure TMainCommands.cm_OpenBar(const Params: array of string);
@@ -1678,14 +1676,14 @@ procedure TMainCommands.cm_TransferLeft(const Params: array of string);
 begin
   DoTransferPath(frmMain.RightTabs.ActivePage,
                  frmMain.LeftTabs.ActivePage,
-                 frmMain.SelectedPanel = fpRight);
+                 frmMain.SelectedPanel = 1);
 end;
 
 procedure TMainCommands.cm_TransferRight(const Params: array of string);
 begin
   DoTransferPath(frmMain.LeftTabs.ActivePage,
                  frmMain.RightTabs.ActivePage,
-                 frmMain.SelectedPanel = fpLeft);
+                 frmMain.SelectedPanel = 0);
 end;
 
 procedure TMainCommands.cm_GoToFirstEntry(const Params: array of string);
@@ -1978,7 +1976,7 @@ end;
 //   keep       = This indicates if in the target notebook where tabs will be loaded if we remove first the target present or not. When keep is "false", which is the default, we flush them first. If "keep" is "true", we add the loaded tab to the existing ones.
 procedure TMainCommands.cm_LoadTabs(const Params: array of string);
 var
-  originalFilePanel:TFilePanelSelect;
+  originalFilePanel:TFilePanelIndex;
   sInputTabsFilename: string = '';
   param, sValue: string;
   Config: TXmlConfig;
@@ -2376,10 +2374,7 @@ end;
 
 procedure TMainCommands.cm_ThumbnailsView(const Params: array of string);
 begin
-  case frmMain.SelectedPanel of
-    fpLeft: ToggleOrNotToOrFromThumbnailsView(frmMain.FrameLeft, frmMain.LeftTabs);
-    fpRight: ToggleOrNotToOrFromThumbnailsView(frmMain.FrameRight, frmMain.RightTabs);
-  end;
+  ToggleOrNotToOrFromThumbnailsView(frmMain.ActiveFrame, frmMain.ActiveNotebook);
   frmMain.ActiveFrame.SetFocus;
 end;
 
@@ -2404,7 +2399,7 @@ begin
     try
       UpdateShellTreeView;
       UpdateTreeViewPath;
-      MainSplitterPos:= MainSplitterPos;
+      frmMain.LayoutPanels;
     finally
       EnableAutoSizing;
     end;
@@ -3605,7 +3600,9 @@ end;
 
 procedure TMainCommands.cm_SyncDirs(const Params: array of string);
 begin
-  ShowSyncDirsDlg(frmMain.FrameLeft, frmMain.FrameRight);
+  if not frmMain.SelectTargetPanel('Synchronize with panel') then
+    Exit;
+  ShowSyncDirsDlg(frmMain.ActiveFrame, frmMain.NotActiveFrame);
 end;
 
 //------------------------------------------------------
@@ -5026,7 +5023,7 @@ end;
 { TMainCommands.DoActionOnMultipleTabs }
 procedure TMainCommands.DoActionOnMultipleTabs(const Params: array of string; ProcedureDoingActionOnMultipleTabs: TProcedureDoingActionOnMultipleTabs);
 var
-  originalFilePanel:TFilePanelSelect;
+  originalFilePanel:TFilePanelIndex;
   SideOfAction : TTabsConfigLocation = tclActive;
   bAbort: boolean = False;
   bDoLocked: boolean = False;
@@ -5361,22 +5358,19 @@ var
 begin
   with frmMain do
   begin
-    // Select opposite panel
+    // Select the next panel in the grid.
     if Length(Params) = 0 then
     begin
-      case SelectedPanel of
-        fpLeft: SetActiveFrame(fpRight);
-        fpRight: SetActiveFrame(fpLeft);
-      end;
+      SetActiveFrame(TFilePanelIndex((Ord(SelectedPanel) + 1) mod FILE_PANEL_COUNT));
     end
     else begin
       AParam:= GetDefaultParam(Params);
       if GetParamValue(AParam, 'side', AValue) then
       begin
         if AValue = 'left' then
-          SetActiveFrame(fpLeft)
+          SetActiveFrame(0)
         else if AValue = 'right' then
-          SetActiveFrame(fpRight);
+          SetActiveFrame(1);
       end;
     end;
   end;
@@ -5404,7 +5398,7 @@ var
   Param: String;
   Index: Integer;
   AValue: String;
-  SelectedPanel: TFilePanelSelect;
+  SelectedPanel: TFilePanelIndex;
 begin
   if Length(Params) > 0 then
   begin
@@ -5418,14 +5412,11 @@ begin
       end
       else if GetParamValue(Param, 'side', AValue) then
       begin
-        if AValue = 'left' then SelectedPanel:= fpLeft
-        else if AValue = 'right' then SelectedPanel:= fpRight
+        if AValue = 'left' then SelectedPanel:= 0
+        else if AValue = 'right' then SelectedPanel:= 1
         else if AValue = 'inactive' then
         begin
-          if frmMain.SelectedPanel = fpLeft then
-            SelectedPanel:= fpRight
-          else if frmMain.SelectedPanel = fpRight then
-            SelectedPanel:= fpLeft;
+          SelectedPanel:= frmMain.TargetPanel;
         end;
       end
     end;

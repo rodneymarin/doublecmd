@@ -563,7 +563,7 @@ var
   AConfig: TXmlConfig;
   sActualTabSection: string;
   TestNode: TXmlNode; // Use just to validate there will be something to load from file.
-  originalFilePanel: TFilePanelSelect;
+  originalFilePanel: TFilePanelIndex;
   // Following variables are "pre-initialized" to default values AND are values used when not using the possibility to configure redirection of tabs in our setups.
   TargetDestinationForLeft: TTabsConfigLocation = tclLeft;
   TargetDestinationForRight: TTabsConfigLocation = tclRight;

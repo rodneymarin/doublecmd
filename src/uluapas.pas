@@ -751,7 +751,7 @@ begin
   Count:= lua_gettop(L);
   lua_pushinteger(L, Integer(frmMain.SelectedPanel));
   if (Count > 0) then
-    frmMain.SetActiveFrame(TFilePanelSelect(lua_tointeger(L, 1)));
+    frmMain.SetActiveFrame(TFilePanelIndex(lua_tointeger(L, 1)));
 end;
 
 function luaExecute(L: Plua_State): Integer; cdecl;

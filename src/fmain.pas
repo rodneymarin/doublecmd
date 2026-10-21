@@ -591,7 +591,6 @@ type
     procedure miTrayIconRestoreClick(Sender: TObject);
     procedure mnuOpenStashClick(Sender: TObject);
     procedure PanelButtonClick(Button: TSpeedButton; FileView: TFileView);
-    procedure pnlDiskResize(Sender: TObject);
     procedure ShellTreeViewSelect;
     procedure ShellTreeViewKeyDown(Sender: TObject; var Key: Word;
       Shift: TShiftState);
@@ -652,7 +651,6 @@ type
     procedure pnlRightResize(Sender: TObject);
     function CreateNotebook(aParent: TWinControl; aIndex: TFilePanelIndex): TFileViewNotebook;
     procedure CreateFilePanels;
-    procedure LayoutPanels;
     procedure sboxDrivePaint(Sender: TObject);
     procedure PaintDriveFreeBar(Sender: TObject; const bIndUseGradient: boolean;
       const pIndForeColor, pIndThresholdForeColor, pIndBackColor: TColor);
@@ -781,8 +779,7 @@ type
     procedure EditToolbarButton(Toolbar: TKASToolBar; Button: TKASToolButton);
     procedure ToolbarExecuteCommand(ToolItem: TKASToolItem);
     procedure ToolbarExecuteProgram(ToolItem: TKASToolItem);
-    procedure LeftDriveBarExecuteDrive(ToolItem: TKASToolItem);
-    procedure RightDriveBarExecuteDrive(ToolItem: TKASToolItem);
+    procedure PanelDriveBarExecuteDrive(ToolItem: TKASToolItem);
     procedure SetDragCursor(Shift: TShiftState);
     {$IFDEF DARWIN}
     procedure GlobalMacOSKeyDownHandler(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -884,11 +881,12 @@ type
     {en
        Returns the file panel with the given index.
      }
-    function Panel(aIndex: TFilePanelIndex): TFilePanel;
+    function FilePanel(aIndex: TFilePanelIndex): TFilePanel;
     {en
        Asks the user to select the destination file panel. Returns False
        if the user has cancelled the selection.
      }
+    procedure LayoutPanels;
     function SelectTargetPanel(const ATitle: String;
                                aExcludePanel: Integer = -1;
                                aAllowActivePanel: Boolean = False): Boolean;
@@ -1088,7 +1086,7 @@ type
     Path: String;
     Result: Boolean;
     OnFinish: TDataEvent;
-    Panel: TFilePanelSelect;
+    Panel: TFilePanelIndex;
     FileSource: IFileSource;
     FreeSize, TotalSize : Int64;
     procedure GetFreeSpaceInThread;
@@ -1325,8 +1323,8 @@ begin
   UpdateTreeView;
   UpdateTreeViewPath;
   UpdateSelectedDrives;
-  UpdateFreeSpace(fpLeft, True);
-  UpdateFreeSpace(fpRight, True);
+  for I := 0 to FILE_PANEL_COUNT - 1 do
+    UpdateFreeSpace(TFilePanelIndex(I), True);
 
   ThemeServices.OnThemeChange:= @AppThemeChange;
 
@@ -1821,32 +1819,6 @@ begin
     SetActiveFrame(FileView);
 end;
 
-procedure TfrmMain.pnlDiskResize(Sender: TObject);
-var
-  ADelta, AWidth: Integer;
-begin
-  if not gDriveBarSyncWidth then
-  begin
-    if gDriveBar1 and gDriveBar2 then
-    begin
-      if gHorizontalFilePanels then
-        ADelta:= 0
-      else begin
-        ADelta:= MainSplitter.Width;
-        ADelta+= IfThen(MiddleToolBar.Visible, MiddleToolBar.Width);
-      end;
-      AWidth:= Max(0, (pnlDisk.ClientWidth - ADelta) div 2);
-    end
-    else begin
-      AWidth:= Max(0, pnlDisk.ClientWidth);
-    end;
-    pnlDskLeft.Constraints.MinWidth:= AWidth;
-    pnlDskLeft.Constraints.MaxWidth:= AWidth;
-    pnlDskRight.Constraints.MinWidth:= AWidth;
-    pnlDskRight.Constraints.MaxWidth:= AWidth;
-  end;
-end;
-
 procedure TfrmMain.ShellTreeViewSelect;
 begin
   ShellTreeView.Tag := 1;
@@ -2289,123 +2261,6 @@ begin
   end;
 end;
 
-procedure TfrmMain.MainSplitterDblClick(Sender: TObject);
-begin
-  // To prevent MainSplitterMouseUp processing
-  MainSplitterLeftMouseBtnDown:=false;
-  MainSplitter.ParentColor:=true;
-  // Set splitter to 50/50
-  Commands.DoPanelsSplitterPerPos(50);
-end;
-
-procedure TfrmMain.MainSplitterMouseDown(Sender: TObject; Button: TMouseButton;
-  Shift: TShiftState; X, Y: Integer);
-begin
-  if (Button=mbLeft) and (not MainSplitterLeftMouseBtnDown) then
-  begin
-   // Under Linux MainSplitter.Color:=clBlack Doesn't work
-   MainSplitter.ParentColor:=true;
-   MainSplitter.Color:=ColorToRGB(clBlack);
-
-   MainSplitterMouseDownX:=X;
-   MainSplitterMouseDownY:=Y;
-   MainSplitterLeftMouseBtnDown:=true;
-  end;
-end;
-
-procedure TfrmMain.MainSplitterMouseMove(Sender: TObject; Shift: TShiftState;
-  X, Y: Integer);
-var
-  Rect: TRect;
-  sHint: String;
-  Delta: Integer;
-  APoint: TPoint;
-  Moved: Boolean = False;
-begin
-  if MainSplitterLeftMouseBtnDown then
-  begin
-    if not gHorizontalFilePanels and
-       (MainSplitter.Left + X > MainSplitter.Width) and
-       (MainSplitter.Left + X + MainSplitter.Width < pnlNotebooks.Width) then
-    begin
-      MainSplitter.Left := MainSplitter.Left + X - MainSplitterMouseDownX;
-      Moved := True;
-    end
-    else if gHorizontalFilePanels and
-       (MainSplitter.Top + Y > MainSplitter.Height) and
-       (MainSplitter.Top + Y + MainSplitter.Height < pnlNotebooks.Height) then
-    begin
-      MainSplitter.Top := MainSplitter.Top + Y - MainSplitterMouseDownY;
-      Moved := True;
-    end;
-
-    if Moved then
-    begin
-      // create hint
-      if not Assigned(MainSplitterHintWnd) then
-      begin
-        MainSplitterHintWnd := THintWindow.Create(nil);
-        MainSplitterHintWnd.Color := Application.HintColor;
-      end;
-
-      // calculate percent
-      if not gHorizontalFilePanels then
-      begin
-        Delta:= IfThen(MiddleToolBar.Visible, MiddleToolBar.Width);
-        FMainSplitterPos:= MainSplitter.Left * 100 / (pnlNotebooks.Width-MainSplitter.Width - Delta);
-      end
-      else begin
-        Delta:= IfThen(MiddleToolBar.Visible, MiddleToolBar.Height);
-        FMainSplitterPos:= MainSplitter.Top * 100 / (pnlNotebooks.Height-MainSplitter.Height - Delta);
-      end;
-
-      // generate hint text
-      sHint:= FloatToStrF(FMainSplitterPos, ffFixed, 15, 1) + '%';
-
-      // calculate hint position
-      Rect:= MainSplitterHintWnd.CalcHintRect(200, sHint, nil);
-      APoint:= Mouse.CursorPos;
-      with Rect do
-      begin
-        Right:= APoint.X + 8 + Right;
-        Bottom:= APoint.Y + 12 + Bottom;
-        Left:= APoint.X + 8;
-        Top:= APoint.Y + 12;
-      end;
-
-      // show hint
-      MainSplitterHintWnd.ActivateHint(Rect, sHint);
-    end;
-  end;
-end;
-
-procedure TfrmMain.MainSplitterMouseUp(Sender: TObject; Button: TMouseButton;
-  Shift: TShiftState; X, Y: Integer);
-begin
-  // hide and destroy hint
-  if Assigned(MainSplitterHintWnd) then
-  begin
-    MainSplitterHintWnd.Hide;
-    FreeAndNil(MainSplitterHintWnd);
-  end;
-
-  if (MainSplitterLeftMouseBtnDown) then
-  begin
-    MainSplitter.ParentColor:=true;
-    MainSplitterLeftMouseBtnDown:=false;
-
-    if not FResizingFilePanels then
-    begin
-      FResizingFilePanels := True;
-      if not gHorizontalFilePanels then
-        pnlLeft.Width := MainSplitter.Left
-      else
-        pnlLeft.Height := MainSplitter.Top;
-      FResizingFilePanels := False;
-    end;
-  end;
-end;
-
 procedure TfrmMain.MainTrayIconClick(Sender: TObject);
 begin
   // Only react to clicks if the icon is not scheduled to be hidden.
@@ -2429,23 +2284,37 @@ end;
 //Double-clicking on the "FPathLabel" of the "TFileViewHeader" does the same as in TC and is implemented now.
 //
 procedure TfrmMain.lblDriveInfoDblClick(Sender: TObject);
+var
+  I: Integer;
 begin
   if tb_activate_panel_on_click in gDirTabOptions then
   begin
-    if Sender = lblRightDriveInfo then
-      SetActiveFrame(fpRight)
-    else if Sender = lblLeftDriveInfo then
-      SetActiveFrame(fpLeft);
+    for I := 0 to FILE_PANEL_COUNT - 1 do
+      if Assigned(FPanels[I]) and (FPanels[I].lblDriveInfo = Sender) then
+      begin
+        SetActiveFrame(TFilePanelIndex(I));
+        Break;
+      end;
   end;
   Commands.cm_DirHotList(['position=cursor']);
 end;
 
-procedure TfrmMain.LeftDriveBarExecuteDrive(ToolItem: TKASToolItem);
+procedure TfrmMain.PanelDriveBarExecuteDrive(ToolItem: TKASToolItem);
 var
+  I, J: Integer;
   DriveItem: TKASDriveItem;
 begin
   DriveItem := ToolItem as TKASDriveItem;
-  SetPanelDrive(fpLeft, DriveItem.Drive, True);
+  for I := 0 to FILE_PANEL_COUNT - 1 do
+  begin
+    if not Assigned(FPanels[I]) then Continue;
+    for J := 0 to FPanels[I].DiskToolBar.ButtonCount - 1 do
+      if FPanels[I].DiskToolBar.Buttons[J].ToolItem = ToolItem then
+      begin
+        SetPanelDrive(TFilePanelIndex(I), DriveItem.Drive, True);
+        Exit;
+      end;
+  end;
 end;
 
 procedure TfrmMain.MainToolBarDragDrop(Sender, Source: TObject; X, Y: Integer);
@@ -2653,14 +2522,6 @@ begin
   FreeAndNil(FDropParams);
 end;
 
-procedure TfrmMain.mnuSplitterPercentClick(Sender: TObject);
-begin
-  with (Sender as TMenuItem) do
-  begin
-    Commands.DoPanelsSplitterPerPos(Tag);
-  end;
-end;
-
 procedure TfrmMain.mnuTabMenuExecute(Sender: TObject);
 begin
   (Sender as TAction).OnExecute:= @actExecute;
@@ -2710,19 +2571,19 @@ begin
 
     if (Notebook = nbLeft) and (FrameLeft <> nil) then
       begin
-        if PanelSelected = fpLeft then // same panel
+        if FActivePanel = 0 then // same panel
           FrameLeft.SetFocus
         else if (tb_activate_panel_on_click in gDirTabOptions) then
-          SetActiveFrame(fpLeft)
+          SetActiveFrame(0)
         else
           FrameRight.SetFocus;
       end;
     if (Notebook = nbRight) and (FrameRight <> nil) then
       begin
-        if PanelSelected = fpRight then // same panel
+        if FActivePanel = 1 then // same panel
           FrameRight.SetFocus
         else if (tb_activate_panel_on_click in gDirTabOptions) then
-          SetActiveFrame(fpRight)
+          SetActiveFrame(1)
         else
           FrameLeft.SetFocus;
       end;
@@ -2759,11 +2620,11 @@ begin
 
     // Update selected drive only on non-active panel,
     // because active panel is updated on focus change.
-    if (PanelSelected <> Notebook.Side) and
+    if (FActivePanel <> Notebook.PanelIndex) and
        not (tb_activate_panel_on_click in gDirTabOptions) then
     begin
       UpdateSelectedDrive(Notebook);
-      UpdateFreeSpace(Notebook.Side, True);
+      UpdateFreeSpace(Notebook.PanelIndex, True);
     end;
   end;
 
@@ -3226,7 +3087,7 @@ begin
   Result := GetPanelEqualButton(1);
 end;
 
-function TfrmMain.Panel(aIndex: TFilePanelIndex): TFilePanel;
+function TfrmMain.FilePanel(aIndex: TFilePanelIndex): TFilePanel;
 begin
   Result := GetPanel(aIndex);
 end;
@@ -3347,7 +3208,6 @@ constructor TfrmMain.Create(TheOwner: TComponent);
   end;
 {$ENDIF}
 begin
-  FMainSplitterPos := 50.0;
   inherited Create(TheOwner);
   FCommands := TMainCommands.Create(Self, actionLst);
 
@@ -4648,12 +4508,8 @@ begin
       begin
         if (QuickViewPanel = nil) then
         begin
-          // Select opposite panel.
-          case PanelSelected of
-            fpLeft: SetActiveFrame(fpRight);
-            fpRight: SetActiveFrame(fpLeft);
-            else     SetActiveFrame(fpLeft);
-          end;
+          // Select the next panel in the grid.
+          SetActiveFrame(TFilePanelIndex((Ord(FActivePanel) + 1) mod FILE_PANEL_COUNT));
         end;
         Key := 0;
       end;
@@ -4705,52 +4561,77 @@ begin
   Node.SelectedIndex:= 0;
 end;
 
+procedure TfrmMain.LayoutPanels;
+var
+  I: Integer;
+  ARow, ACol: Integer;
+  AGap, ACellWidth, ACellHeight: Integer;
+  AWidth, AHeight, ADelta: Integer;
+begin
+  if not Assigned(pnlNotebooks) then Exit;
+
+  // The middle toolbar is placed on the left side of the panels area.
+  ADelta := IfThen(MiddleToolBar.Visible, MiddleToolBar.Width);
+  AGap := 2;
+
+  AWidth := pnlNotebooks.ClientWidth - ADelta;
+  if AWidth < 0 then AWidth := 0;
+  AHeight := pnlNotebooks.ClientHeight;
+  if AHeight < 0 then AHeight := 0;
+
+  ACellWidth := (AWidth - AGap * (FILE_PANEL_COLUMNS - 1)) div FILE_PANEL_COLUMNS;
+  ACellHeight := (AHeight - AGap * (FILE_PANEL_ROWS - 1)) div FILE_PANEL_ROWS;
+
+  for I := 0 to FILE_PANEL_COUNT - 1 do
+  begin
+    if not Assigned(FPanels[I]) then Continue;
+
+    ARow := I div FILE_PANEL_COLUMNS;
+    ACol := I mod FILE_PANEL_COLUMNS;
+
+    FPanels[I].Container.SetBounds(ADelta + ACol * (ACellWidth + AGap),
+                                   ARow * (ACellHeight + AGap),
+                                   ACellWidth,
+                                   ACellHeight);
+    FPanels[I].UpdateLayout;
+  end;
+end;
+
 procedure TfrmMain.pnlLeftResize(Sender: TObject);
 begin
-  if gDriveBarSyncWidth then
+  if not FResizingFilePanels then
   begin
-    if gDriveBar1 and gDriveBar2 and not gHorizontalFilePanels then
-    begin
-      pnlDskLeft.Constraints.MinWidth:= pnlLeft.Width;
-      pnlDskLeft.Constraints.MaxWidth:= pnlLeft.Width;
+    FResizingFilePanels := True;
+    try
+      LayoutPanels;
+    finally
+      FResizingFilePanels := False;
     end;
-  end;
-
-  // Put splitter after left panel.
-  if not gHorizontalFilePanels then
-  begin
-    MainSplitter.Left   := pnlLeft.Width;
-    MainSplitter.Top    := pnlLeft.Top;
-    MainSplitter.Height := pnlLeft.Height;
-    MainSplitter.Width  := 3;
-  end
-  else
-  begin
-    MainSplitter.Top    := pnlLeft.Height;
-    MainSplitter.Left   := pnlLeft.Left;
-    MainSplitter.Width  := pnlLeft.Width;
-    MainSplitter.Height := 3;
   end;
 end;
 
 procedure TfrmMain.pnlLeftRightDblClick(Sender: TObject);
 var
   APanel: TPanel;
+  AIndex: Integer;
   APoint: TPoint;
+  AFrame: TFileView;
   FileViewNotebook: TFileViewNotebook;
 begin
   if Sender is TPanel then
   begin
     APanel := Sender as TPanel;
-    if APanel = pnlLeft then
+    for AIndex := 0 to FILE_PANEL_COUNT - 1 do
+      if Assigned(FPanels[AIndex]) and (FPanels[AIndex].Container = APanel) then
       begin
-        APoint := FrameLeft.ClientToScreen(Classes.Point(0, FrameLeft.Top));
-        if Mouse.CursorPos.Y < APoint.Y then Commands.DoNewTab(nbLeft);
-      end
-    else if APanel = pnlRight then
-      begin
-        APoint := FrameRight.ClientToScreen(Classes.Point(0, FrameRight.Top));
-        if Mouse.CursorPos.Y < APoint.Y then Commands.DoNewTab(nbRight);
+        AFrame := FPanels[AIndex].ActiveView;
+        if Assigned(AFrame) then
+        begin
+          APoint := AFrame.ClientToScreen(Classes.Point(0, AFrame.Top));
+          if Mouse.CursorPos.Y < APoint.Y then
+            Commands.DoNewTab(FPanels[AIndex].Notebook);
+        end;
+        Break;
       end;
   end;
   if Sender is TFileViewNotebook then
@@ -4786,53 +4667,94 @@ begin
 end;
 
 procedure TfrmMain.pnlNotebooksResize(Sender: TObject);
-var
-  Delta: Integer;
 begin
-  if not FResizingFilePanels then
-  begin
-    FResizingFilePanels := True;
-    if not gHorizontalFilePanels then
-    begin
-      pnlLeft.BorderSpacing.Bottom:= 0;
-      Delta:= IfThen(MiddleToolBar.Visible, MiddleToolBar.Width);
-      pnlLeft.BorderSpacing.Right:= 4 - (pnlNotebooks.Width - Delta) mod 2;
-      pnlLeft.Width := Round(Double(pnlNotebooks.Width - pnlLeft.BorderSpacing.Right - Delta) * FMainSplitterPos / 100.0);
-    end
-    else begin
-      pnlLeft.BorderSpacing.Right:= 0;
-      Delta:= IfThen(MiddleToolBar.Visible, MiddleToolBar.Height);
-      pnlLeft.BorderSpacing.Bottom:= 4 - (pnlNotebooks.Height - Delta) mod 2;
-      pnlLeft.Height := Round(Double(pnlNotebooks.Height - pnlLeft.BorderSpacing.Bottom - Delta) * FMainSplitterPos / 100.0);
-    end;
-    FResizingFilePanels := False;
-  end;
+  pnlLeftResize(Sender);
 end;
 
 procedure TfrmMain.pnlRightResize(Sender: TObject);
-var
-  AWidth: Integer;
 begin
-  if gDriveBarSyncWidth then
+  pnlLeftResize(Sender);
+end;
+
+function TfrmMain.CreateNotebook(aParent: TWinControl;
+                                 aIndex: TFilePanelIndex): TFileViewNotebook;
+begin
+  Result := TFileViewNotebook.Create(aParent, aIndex);
+  Result.Align := alNone;
+  Result.Options := [nboHidePageListPopup];
+  {$if lcl_fullversion >= 1070000}
+    Result.Options := Result.Options + [nboDoChangeOnSetIndex];
+  {$endif}
+
+  Result.OnCloseTabClicked := @NotebookCloseTabClicked;
+  Result.OnMouseDown := @nbPageMouseDown;
+  Result.OnMouseUp := @nbPageMouseUp;
+  Result.OnChange := @nbPageChanged;
+  Result.OnDblClick := @pnlLeftRightDblClick;
+  Result.OnDragOver:= @NotebookDragOver;
+  Result.OnDragDrop:= @NotebookDragDrop;
+end;
+
+procedure TfrmMain.CreateFilePanels;
+var
+  I: Integer;
+  APanel: TFilePanel;
+begin
+  for I := 0 to FILE_PANEL_COUNT - 1 do
   begin
-    if gDriveBar1 and not gHorizontalFilePanels then
-    begin
-      if gDriveBar2 then
-        AWidth := pnlRight.Width + 1
-      else begin
-        AWidth := pnlNotebooks.Width - 2;
-      end;
-      if AWidth < 0 then AWidth := 0;
-      pnlDskRight.Constraints.MinWidth := AWidth;
-      pnlDskRight.Constraints.MaxWidth := AWidth;
-    end
-    else if gHorizontalFilePanels and not gDriveBar2 then
-    begin
-      AWidth := Max(0, pnlNotebooks.Width - 2);
-      pnlDskRight.Constraints.MinWidth := AWidth;
-      pnlDskRight.Constraints.MaxWidth := AWidth;
-    end;
+    APanel := TFilePanel.Create(Self, TFilePanelIndex(I), pnlNotebooks);
+    APanel.OnButtonClick := @PanelButtonClickEvent;
+    APanel.OnDriveButtonClick := @PanelDriveButtonClick;
+    APanel.OnEqualButtonClick := @PanelEqualButtonClick;
+    APanel.OnDriveInfoResize := @lblDriveInfoResize;
+    APanel.OnDriveInfoDblClick := @lblDriveInfoDblClick;
+    APanel.OnDrivePaint := @sboxDrivePaint;
+    APanel.Container.OnDblClick := @pnlLeftRightDblClick;
+    APanel.Container.OnResize := @pnlLeftResize;
+    FPanels[I] := APanel;
   end;
+
+  for I := 0 to FILE_PANEL_COUNT - 1 do
+    FPanels[I].SetNotebook(CreateNotebook(FPanels[I].Container,
+                                          TFilePanelIndex(I)));
+
+  LayoutPanels;
+end;
+
+function TfrmMain.SelectTargetPanel(const ATitle: String;
+                                    aExcludePanel: Integer;
+                                    aAllowActivePanel: Boolean): Boolean;
+var
+  Choices: array[0..FILE_PANEL_COUNT-1] of TFilePanelChoice;
+  I, Count: Integer;
+  AFrame: TFileView;
+  APath: String;
+begin
+  Result := False;
+  Count := 0;
+
+  for I := 0 to FILE_PANEL_COUNT - 1 do
+  begin
+    if (I = aExcludePanel) then Continue;
+    if (I = Ord(FActivePanel)) and (not aAllowActivePanel) then Continue;
+
+    AFrame := PanelFrame(TFilePanelIndex(I));
+    if Assigned(AFrame) then
+      APath := AFrame.CurrentPath
+    else
+      APath := '';
+
+    Choices[Count].Index := I;
+    Choices[Count].Caption := Format('Panel %d - %s', [I + 1, APath]);
+    Choices[Count].Path := APath;
+    Inc(Count);
+  end;
+
+  if Count = 0 then Exit;
+
+  Result := SelectFilePanel(ATitle, Choices[0..Count-1], I);
+  if Result then
+    FTargetPanel := TFilePanelIndex(I);
 end;
 
 procedure TfrmMain.sboxDrivePaint(Sender: TObject);
@@ -5247,9 +5169,9 @@ begin
   if FileView.NotebookPage is TFileViewPage then
     begin
       Page := FileView.NotebookPage as TFileViewPage;
-      SelectedPanel := Page.Notebook.Side;
+      FActivePanel := Page.Notebook.PanelIndex;
       UpdateSelectedDrive(Page.Notebook);
-      UpdateFreeSpace(Page.Notebook.Side, False);
+      UpdateFreeSpace(Page.Notebook.PanelIndex, False);
     end;
   UpdateFileView;
 end;
@@ -5264,14 +5186,14 @@ begin
 
       if Page.IsActive then
       begin
-        UpdateFreeSpace(Page.Notebook.Side, False);
+        UpdateFreeSpace(Page.Notebook.PanelIndex, False);
       end;
     end;
 end;
 
-procedure TfrmMain.SetActiveFrame(panel: TFilePanelSelect);
+procedure TfrmMain.SetActiveFrame(aPanel: TFilePanelIndex);
 begin
-  SelectedPanel:= panel;
+  FActivePanel := aPanel;
   SetActiveFrame(ActiveFrame);
 end;
 
@@ -5442,15 +5364,14 @@ begin
   // create drives drop down menu
   FDrivesListPopup.UpdateDrivesList(DrivesList);
 
-  // create drives left/right panels
-  if gDriveBar1 then
+  // create a drive toolbar for every file panel
+  for I := 0 to FILE_PANEL_COUNT - 1 do
   begin
-    CreateDiskPanel(dskRight);
-    if gDriveBar2 then
-      CreateDiskPanel(dskLeft);
+    if not Assigned(FPanels[I]) then Continue;
+    if gDriveBar1 then
+      CreateDiskPanel(FPanels[I].DiskToolBar);
+    FPanels[I].DiskToolBar.AddToolItemExecutor(TKASDriveItem, @PanelDriveBarExecuteDrive);
   end;
-  dskLeft.AddToolItemExecutor(TKASDriveItem, @LeftDriveBarExecuteDrive);
-  dskRight.AddToolItemExecutor(TKASDriveItem, @RightDriveBarExecuteDrive);
 
   if gSeparateTree and Assigned(ShellTreeView) then
   begin
@@ -5953,78 +5874,17 @@ procedure TfrmMain.UpdateWindowView;
     end;
   end;
 
-  procedure AnchorHorizontalBetween(AControl, ALeftSibling, ARightSibling: TControl);
-  begin
-    AControl.Anchors := AControl.Anchors + [akLeft, akRight];
-    AControl.AnchorSide[akLeft].Control   := ALeftSibling;
-    AControl.AnchorSide[akLeft].Side      := asrRight;
-    AControl.AnchorSide[akRight].Control  := ARightSibling;
-    AControl.AnchorSide[akRight].Side     := asrLeft;
-  end;
-
-  procedure AnchorHorizontal(AControl, ASibling: TControl);
-  begin
-    AControl.Anchors := AControl.Anchors + [akLeft, akRight];
-    AControl.AnchorSide[akLeft].Control   := ASibling;
-    AControl.AnchorSide[akLeft].Side      := asrLeft;
-    AControl.AnchorSide[akRight].Control  := ASibling;
-    AControl.AnchorSide[akRight].Side     := asrRight;
-  end;
-
-  procedure AnchorFreeSpace(LeftControl, RightControl: TControl; ExcludeVert: Boolean);
-  begin
-    if gDrivesListButton then
-    begin
-      AnchorHorizontalBetween(LeftControl, btnLeftDrive, btnLeftDirectoryHotlist);
-      AnchorHorizontalBetween(RightControl, btnRightDrive, btnRightDirectoryHotlist);
-
-      if not ExcludeVert then
-      begin
-        LeftControl.AnchorVerticalCenterTo(pnlLeftTools);
-        RightControl.AnchorVerticalCenterTo(pnlRightTools);
-      end;
-    end
-    else
-    begin
-      AnchorHorizontal(LeftControl, pnlLeftTools);
-      AnchorHorizontal(RightControl, pnlRightTools);
-
-      if not ExcludeVert then
-      begin
-        LeftControl.AnchorSide[akTop].Control  := pnlLeftTools;
-        LeftControl.AnchorSide[akTop].Side     := asrTop;
-        RightControl.AnchorSide[akTop].Control := pnlRightTools;
-        RightControl.AnchorSide[akTop].Side    := asrTop;
-      end;
-    end;
-  end;
-
 var
   I: Integer;
+  APanel: TFilePanel;
   HMForm: THMForm;
   FunButton: TSpeedButton;
   Hotkey: THotkey;
 begin
   DisableAutoSizing;
   try
-    if gHorizontalFilePanels then
-    begin
-      pnlLeft.Align := alTop;
-      pnlLeft.BorderSpacing.Right  := 0;
-      pnlLeft.BorderSpacing.Bottom := 3;
-      MainSplitter.Cursor := crVSplit;
-      MiddleToolBar.Align:= alTop;
-      MiddleToolBar.Top:= pnlLeft.Height + 1;
-    end
-    else
-    begin
-      pnlLeft.Align := alLeft;
-      pnlLeft.BorderSpacing.Right  := 3;
-      pnlLeft.BorderSpacing.Bottom := 0;
-      MainSplitter.Cursor := crHSplit;
-      MiddleToolBar.Align:= alLeft;
-      MiddleToolBar.Left:= pnlLeft.Width + 1;
-    end;
+    MiddleToolBar.Align := alLeft;
+    MiddleToolBar.Left := 0;
 
     (* Middle Tool Bar *)
     MiddleToolbar.Visible:= gMiddleToolBar;
@@ -6038,39 +5898,38 @@ begin
     pnlNotebooksResize(pnlNotebooks);
 
     (* Disk Panels *)
-    if gHorizontalFilePanels and gDriveBar1 and gDriveBar2 then
+    for I := 0 to FILE_PANEL_COUNT - 1 do
     begin
-      dskLeft.Parent := pnlDiskLeftInner;
-      dskRight.Parent := pnlDiskRightInner;
-    end
-    else
-    begin
-      dskLeft.Parent := pnlDskLeft;
-      dskRight.Parent := pnlDskRight;
-    end;
+      APanel := FPanels[I];
+      if not Assigned(APanel) then Continue;
 
-    pnlDiskResize(pnlDisk);
-    pnlRightResize(pnlRight);
+      APanel.DiskPanel.Visible := gDriveBar1;
+      APanel.DiskToolBar.GlyphSize := gDiskIconsSize;
+      APanel.DiskToolBar.ButtonHeight := gDiskIconsSize + 6;
 
-    dskLeft.GlyphSize:= gDiskIconsSize;
-    dskRight.GlyphSize:= gDiskIconsSize;
-    dskLeft.ButtonHeight:= gDiskIconsSize + 6;
-    dskRight.ButtonHeight:= gDiskIconsSize + 6;
-
-    pnlDiskLeftInner.Visible := gHorizontalFilePanels and gDriveBar1 and gDriveBar2;
-    pnlDiskRightInner.Visible := gHorizontalFilePanels and gDriveBar1 and gDriveBar2;
-    pnlDskLeft.Visible := not gHorizontalFilePanels and gDriveBar1 and gDriveBar2;
-    pnlDskRight.Visible := gDriveBar1 and (not gHorizontalFilePanels or not gDriveBar2);
-    pnlDisk.Visible := pnlDskLeft.Visible or pnlDskRight.Visible;
-
-    if gHorizontalFilePanels and gDriveBar1 and gDriveBar2 then
-    begin
-      pnlLeftTools.Top := pnlDiskLeftInner.Height + 1;
-      pnlRightTools.Top := pnlDiskRightInner.Height + 1;
+      APanel.btnDrive.Visible := gDrivesListButton;
+      APanel.btnDrive.Flat := gInterfaceFlat;
+      APanel.btnRoot.Visible := gDrivesListButton;
+      APanel.btnRoot.Flat := gInterfaceFlat;
+      APanel.btnUp.Visible := gDrivesListButton;
+      APanel.btnUp.Flat := gInterfaceFlat;
+      APanel.btnHome.Visible := gDrivesListButton;
+      APanel.btnHome.Flat := gInterfaceFlat;
+      APanel.btnHotList.Visible := gDrivesListButton;
+      APanel.btnHotList.Flat := gInterfaceFlat;
+      APanel.btnEqual.Visible := gDrivesListButton;
+      APanel.btnEqual.Flat := gInterfaceFlat;
+      APanel.lblDriveInfo.Visible := (gDriveFreeSpace and not (gDriveBarFreeSpace and not gDrivesListButton));
+      APanel.pbxDrive.Visible := gDriveInd;
+      APanel.ToolsPanel.Visible := gDrivesListButton or gDriveInd or APanel.lblDriveInfo.Visible;
+      APanel.ToolsPanel.DoubleBuffered := True;
+      APanel.UpdateAnchors;
+      APanel.UpdateLayout;
     end;
 
     // Create disk panels after assigning parent.
     UpdateDiskCount; // Update list of showed drives
+    (*/ Disk Panels *)
     (*/ Disk Panels *)
 
     FDrivesListPopup.UpdateView;
@@ -6085,64 +5944,6 @@ begin
     MainToolBar.ShowCaptions:= gToolBarShowCaptions;
     MainToolBar.SetButtonSize(gToolBarButtonSize, gToolBarButtonSize);
     LoadToolbar(MainToolBar);
-
-    btnLeftDrive.Visible := gDrivesListButton;
-    btnLeftDrive.Flat := gInterfaceFlat;
-    btnLeftRoot.Visible := gDrivesListButton;
-    btnLeftRoot.Flat := gInterfaceFlat;
-    btnLeftUp.Visible := gDrivesListButton;
-    btnLeftUp.Flat := gInterfaceFlat;
-    btnLeftHome.Visible := gDrivesListButton;
-    btnLeftHome.Flat := gInterfaceFlat;
-    btnLeftDirectoryHotlist.Visible := gDrivesListButton;
-    btnLeftDirectoryHotlist.Flat := gInterfaceFlat;
-    btnLeftEqualRight.Visible := gDrivesListButton;
-    btnLeftEqualRight.Flat:= gInterfaceFlat;
-    lblLeftDriveInfo.Visible:= (gDriveFreeSpace and not (gDriveBarFreeSpace and not gDrivesListButton));
-    pbxLeftDrive.Visible := gDriveInd;
-    pnlLeftTools.Visible:= gDrivesListButton or gDriveInd or lblLeftDriveInfo.Visible;
-    pnlLeftTools.DoubleBuffered := True;
-
-    btnRightDrive.Visible := gDrivesListButton;
-    btnRightDrive.Flat := gInterfaceFlat;
-    btnRightRoot.Visible := gDrivesListButton;
-    btnRightRoot.Flat := gInterfaceFlat;
-    btnRightUp.Visible := gDrivesListButton;
-    btnRightUp.Flat := gInterfaceFlat;
-    btnRightHome.Visible := gDrivesListButton;;
-    btnRightHome.Flat := gInterfaceFlat;
-    btnRightDirectoryHotlist.Visible := gDrivesListButton;
-    btnRightDirectoryHotlist.Flat := gInterfaceFlat;
-    btnRightEqualLeft.Visible := gDrivesListButton;
-    btnRightEqualLeft.Flat:= gInterfaceFlat;
-    lblRightDriveInfo.Visible:= (gDriveFreeSpace and not (gDriveBarFreeSpace and not gDrivesListButton));
-    pbxRightDrive.Visible := gDriveInd;
-    pnlRightTools.Visible:= gDrivesListButton or gDriveInd or lblRightDriveInfo.Visible;
-    pnlRightTools.DoubleBuffered := True;
-
-    // Free space indicator.
-    if (gDriveFreeSpace and not (gDriveBarFreeSpace and not gDrivesListButton)) then
-    begin
-      AnchorFreeSpace(lblLeftDriveInfo, lblRightDriveInfo, gDriveInd);
-      if gDriveInd then
-      begin
-        lblLeftDriveInfo.AnchorSide[akTop].Side  := asrTop;
-        lblRightDriveInfo.AnchorSide[akTop].Side := asrTop;
-      end;
-    end;
-
-    // Drive free space indicator
-    if gDriveInd then
-    begin
-      AnchorFreeSpace(pbxLeftDrive, pbxRightDrive, gDriveFreeSpace);
-      if gDriveFreeSpace then
-      begin
-        pbxLeftDrive.AnchorSide[akTop].Control  := lblLeftDriveInfo;
-        pbxLeftDrive.AnchorSide[akTop].Side     := asrBottom;
-        pbxRightDrive.AnchorSide[akTop].Control := lblRightDriveInfo;
-        pbxRightDrive.AnchorSide[akTop].Side    := asrBottom;
-      end;
-    end;
 
     // Separate tree
     UpdateShellTreeView;
@@ -6203,14 +6004,15 @@ begin
       UpdateGUIFunctionKeys;
     end;
 
-    UpdateNoteBook(nbLeft);
-    UpdateNoteBook(nbRight);
+    for I := 0 to FILE_PANEL_COUNT - 1 do
+      if Assigned(FPanels[I]) then
+        UpdateNoteBook(FPanels[I].Notebook);
 
     if FInitializedView then
     begin
       UpdateSelectedDrives;
-      UpdateFreeSpace(fpLeft, True);
-      UpdateFreeSpace(fpRight, True);
+      for I := 0 to FILE_PANEL_COUNT - 1 do
+        UpdateFreeSpace(TFilePanelIndex(I), True);
     end;
 
 {$IF DEFINED(LCLQT5) OR DEFINED(LCLQT6) OR DEFINED(LCLGTK3)}
@@ -6560,7 +6362,7 @@ begin
             begin
               if lowercase(sCmd[1]) = lowercase(PDrive(DrivesList.Items[iIndex])^.DisplayName) then
               begin
-                SetPanelDrive(PanelSelected, DrivesList.Items[iIndex],false);
+                SetPanelDrive(FActivePanel, DrivesList.Items[iIndex],false);
                 sCmd:='';
               end;
               inc(iIndex);
@@ -6643,16 +6445,10 @@ begin
     end;
 end;
 
-procedure TfrmMain.SetMainSplitterPos(AValue: Double);
+procedure TfrmMain.SetPanelSelected(AValue: TFilePanelIndex);
 begin
-  if (AValue >= 0) and (AValue <= 100) then
-    FMainSplitterPos:= AValue;
-end;
-
-procedure TfrmMain.SetPanelSelected(AValue: TFilePanelSelect);
-begin
-  if PanelSelected = AValue then Exit;
-  PanelSelected := AValue;
+  if FActivePanel = AValue then Exit;
+  FActivePanel := AValue;
   UpdateTreeViewPath;
   UpdateMainTitleBar;
   UpdatePrompt;
@@ -6660,7 +6456,6 @@ begin
     FSyncChangeDir:= ExcludeTrailingBackslash(ActiveFrame.CurrentPath);
   end;
 end;
-
 procedure TfrmMain.TypeInCommandLine(Str: String);
 begin
   Commands.cm_FocusCmdLine([]);
@@ -6763,9 +6558,9 @@ begin
   if Params.ActivePanelSpecified then
   begin
     if Params.ActiveRight then
-      SetActiveFrame(fpRight)
+      SetActiveFrame(1)
     else
-      SetActiveFrame(fpLeft);
+      SetActiveFrame(0);
   end;
 
   //-- set path for active panel (if set)
@@ -6801,7 +6596,7 @@ begin
   if Assigned(filenames) and (filenames.Count>0) then
   begin
     AddTab( nbRight, filenames[0] );
-    SetActiveFrame(fpRight);
+    SetActiveFrame(1);
     ActiveFrame.SetFocus;
   end;
 end;
@@ -6854,7 +6649,6 @@ begin
   // Load window bounds
   ANode := gConfig.FindNode(gConfig.RootNode, 'MainWindow/Position', True);
   begin
-    MainSplitterPos := gConfig.GetValue(ANode, 'Splitter', 50.0);
     FRestoredLeft := gConfig.GetValue(ANode, 'Left', 80);
     FRestoredTop := gConfig.GetValue(ANode, 'Top', 48);
     FRestoredWidth := gConfig.GetValue(ANode, 'Width', 800);
@@ -6888,7 +6682,6 @@ begin
     gConfig.SetValue(ANode, 'Height', FRestoredHeight);
     gConfig.SetValue(ANode, 'PixelsPerInch', Screen.PixelsPerInch);
     gConfig.SetValue(ANode, 'Maximized', (WindowState in [wsMaximized,wsFullScreen]));
-    gConfig.SetValue(ANode, 'Splitter', FMainSplitterPos);
   end;
 end;
 
@@ -7130,22 +6923,16 @@ end;
 {$ENDIF}
 
 procedure TfrmMain.UpdateSelectedDrives;
+var
+  I: Integer;
 begin
-  if gDriveBar1 then
+  for I := 0 to FILE_PANEL_COUNT - 1 do
   begin
-    if gDriveBar2 then
-    begin
-      UpdateDriveToolbarSelection(dskLeft, FrameLeft);
-      UpdateDriveToolbarSelection(dskRight, FrameRight);
-    end
-    else
-      // dskRight is the main toolbar.
-      UpdateDriveToolbarSelection(dskRight, ActiveFrame);
+    if not Assigned(FPanels[I]) then Continue;
+    UpdateDriveToolbarSelection(FPanels[I].DiskToolBar, FPanels[I].ActiveView);
+    UpdateDriveButtonSelection(FPanels[I].btnDrive, FPanels[I].ActiveView);
   end;
-  UpdateDriveButtonSelection(btnLeftDrive, FrameLeft);
-  UpdateDriveButtonSelection(btnRightDrive, FrameRight);
 end;
-
 procedure TfrmMain.UpdateMainTitleBar;
 var sTmp: String;
 begin
@@ -7182,32 +6969,24 @@ begin
   pnlKeys.Height := H + 4;
 end;
 
-procedure TfrmMain.ShowDrivesList(APanel: TFilePanelSelect);
+procedure TfrmMain.ShowDrivesList(APanel: TFilePanelIndex);
 var
   p: TPoint;
   ADriveIndex: Integer;
+  APanelObj: TFilePanel;
 begin
+  APanelObj := GetPanel(APanel);
+  if not Assigned(APanelObj) then Exit;
+
   if tb_activate_panel_on_click in gDirTabOptions then
     SetActiveFrame(APanel);
 
-  case APanel of
-    fpLeft:
-      begin
-        p := Classes.Point(btnLeftDrive.Left, btnLeftDrive.Height);
-        p := pnlLeftTools.ClientToScreen(p);
-        ADriveIndex := btnLeftDrive.Tag;
-      end;
-    fpRight:
-      begin
-        p := Classes.Point(btnRightDrive.Left, btnRightDrive.Height);
-        p := pnlRightTools.ClientToScreen(p);
-        ADriveIndex := btnRightDrive.Tag;
-      end;
-  end;
+  p := Classes.Point(APanelObj.btnDrive.Left, APanelObj.btnDrive.Height);
+  p := APanelObj.ToolsPanel.ClientToScreen(p);
+  ADriveIndex := APanelObj.btnDrive.Tag;
   p := ScreenToClient(p);
   FDrivesListPopup.Show(p, APanel, ADriveIndex);
 end;
-
 procedure TfrmMain.HideToTray;
 {$IF DEFINED(LCLGTK2) or DEFINED(LCLQT) or DEFINED(LCLQT5) or DEFINED(LCLQT6)}
 var
@@ -7282,18 +7061,7 @@ begin
 {$ENDIF}
 end;
 
-procedure TfrmMain.RightDriveBarExecuteDrive(ToolItem: TKASToolItem);
-var
-  DriveItem: TKASDriveItem;
-  Panel: TFilePanelSelect;
-begin
-  DriveItem := ToolItem as TKASDriveItem;
-  if gDriveBar2 then
-    Panel := fpRight
-  else
-    Panel := ActiveNotebook.Side;
-  SetPanelDrive(Panel, DriveItem.Drive, True);
-end;
+
 
 procedure TfrmMain.ShowTrayIcon(bShow: Boolean);
 begin
@@ -7382,29 +7150,20 @@ var
   Button: TKASToolButton = nil;
   AData: TFreeSpaceData absolute Data;
 begin
-  case AData.Panel of
-    fpLeft :
-      begin
-        sboxDrive := pbxLeftDrive;
-        aFileView := FrameLeft;
-        lblDriveInfo :=lblLeftDriveInfo;
-      end;
-    fpRight:
-      begin
-        sboxDrive := pbxRightDrive;
-        aFileView := FrameRight;
-        lblDriveInfo := lblRightDriveInfo;
-      end;
-  end;
+  if not Assigned(FPanels[AData.Panel]) then Exit;
+  sboxDrive := FPanels[AData.Panel].pbxDrive;
+  aFileView := FPanels[AData.Panel].ActiveView;
+  lblDriveInfo := FPanels[AData.Panel].lblDriveInfo;
   if gDriveFreeSpace and gDriveBar1 and (gDriveBarFreeSpace and not gDrivesListButton) then
   begin
-    if gDriveBar2 or (AData.Panel = PanelSelected) then
+    if gDriveBar2 or (AData.Panel = FActivePanel) then
     begin
-      if (AData.Panel = fpRight) or (not gDriveBar2) then
-        Button:= dskRight.Buttons[dskRight.ButtonCount - 1]
-      else begin
-        Button:= dskLeft.Buttons[dskLeft.ButtonCount - 1];
-      end;
+      if Assigned(FPanels[AData.Panel]) and
+         (FPanels[AData.Panel].DiskToolBar.ButtonCount > 0) then
+        Button := FPanels[AData.Panel].DiskToolBar.Buttons[
+                   FPanels[AData.Panel].DiskToolBar.ButtonCount - 1]
+      else
+        Button := nil;
     end;
   end;
   if mbCompareFileNames(AData.Path, aFileView.CurrentPath) then
@@ -7450,28 +7209,21 @@ begin
   AData.Free;
 end;
 
-procedure TfrmMain.UpdateFreeSpace(Panel: TFilePanelSelect; Clear: Boolean);
+procedure TfrmMain.UpdateFreeSpace(aPanel: TFilePanelIndex; Clear: Boolean);
 var
   aFileView: TFileView;
   sboxDrive: TPaintBox;
   lblDriveInfo: TLabel;
   AData: TFreeSpaceData;
   Button: TKASToolButton;
+  APanelObj: TFilePanel;
 begin
-  case Panel of
-    fpLeft :
-      begin
-        sboxDrive := pbxLeftDrive;
-        aFileView := FrameLeft;
-        lblDriveInfo :=lblLeftDriveInfo;
-      end;
-    fpRight:
-      begin
-        sboxDrive := pbxRightDrive;
-        aFileView := FrameRight;
-        lblDriveInfo := lblRightDriveInfo;
-      end;
-  end;
+  APanelObj := GetPanel(aPanel);
+  if not Assigned(APanelObj) then Exit;
+
+  sboxDrive := APanelObj.pbxDrive;
+  aFileView := APanelObj.ActiveView;
+  lblDriveInfo := APanelObj.lblDriveInfo;
 
   if Clear then
   begin
@@ -7483,27 +7235,24 @@ begin
 
     if gDriveFreeSpace and gDriveBar1 and (gDriveBarFreeSpace and not gDrivesListButton) then
     begin
-      if gDriveBar2 or (Panel = PanelSelected) then
+      if APanelObj.DiskToolBar.ButtonCount > 0 then
       begin
-        if (Panel = fpRight) or (not gDriveBar2) then
-          Button:= dskRight.Buttons[dskRight.ButtonCount - 1]
-        else begin
-          Button:= dskLeft.Buttons[dskLeft.ButtonCount - 1];
-        end;
-        Button.Hint:= '';
-        Button.Caption:= '';
+        Button := APanelObj.DiskToolBar.Buttons[APanelObj.DiskToolBar.ButtonCount - 1];
+        Button.Hint := '';
+        Button.Caption := '';
       end;
     end;
   end;
 
+  if not Assigned(aFileView) then Exit;
+
   AData := TFreeSpaceData.Create;
-  AData.Panel := Panel;
+  AData.Panel := aPanel;
   AData.Path := aFileView.CurrentPath;
   AData.OnFinish := @OnDriveGetFreeSpace;
   AData.FileSource := aFileView.FileSource;
   TThread.ExecuteInThread(@AData.GetFreeSpaceInThread);
 end;
-
 procedure TfrmMain.CloseNotebook(ANotebook: TFileViewNotebook);
 var
   I: Integer;
@@ -7514,7 +7263,7 @@ begin
 end;
 
 procedure TfrmMain.DriveListDriveSelected(Sender: TObject; ADriveIndex: Integer;
-  APanel: TFilePanelSelect);
+  APanel: TFilePanelIndex);
 begin
   SetPanelDrive(APanel, DrivesList.Items[ADriveIndex], True);
 end;
@@ -7573,7 +7322,7 @@ begin
                    (OperationsManager.OperationsCount > 0);
 end;
 
-procedure TfrmMain.SetPanelDrive(aPanel: TFilePanelSelect; Drive: PDrive; ActivateIfNeeded: Boolean);
+procedure TfrmMain.SetPanelDrive(aPanel: TFilePanelIndex; Drive: PDrive; ActivateIfNeeded: Boolean);
 var
   Index: Integer;
   DrivePath: String;
@@ -7583,18 +7332,10 @@ var
 begin
   if (Drive^.DriveType in [dtSpecial, dtVirtual]) or IsAvailable(Drive, True) then
   begin
-    case aPanel of
-      fpLeft:
-        begin
-          aFileView := FrameLeft;
-          OtherFileView := FrameRight;
-        end;
-      fpRight:
-        begin
-          aFileView := FrameRight;
-          OtherFileView := FrameLeft;
-        end;
-    end;
+    aFileView := PanelFrame(aPanel);
+    OtherFileView := PanelFrame(FTargetPanel);
+    if aFileView = OtherFileView then
+      OtherFileView := nil;
 
     // Special case for special drive
     if Drive^.DriveType = dtSpecial then
@@ -7671,12 +7412,7 @@ begin
     msgWarning(rsMsgDiskNotAvail);
 
     // Restore previous selected button.
-    case aPanel of
-      fpLeft:
-        UpdateSelectedDrive(LeftTabs);
-      fpRight:
-        UpdateSelectedDrive(RightTabs);
-    end;
+    UpdateSelectedDrive(GetPanelNotebook(aPanel));
   end;
 end;
 
