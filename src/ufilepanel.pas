@@ -45,7 +45,22 @@ const
   {en
      Height of the tools row.
   }
-  FILE_PANEL_TOOLS_HEIGHT = 28;
+  FILE_PANEL_TOOLS_HEIGHT = 32;
+
+  {en
+     Height of the buttons of the tools row.
+  }
+  FILE_PANEL_BUTTON_HEIGHT = 28;
+
+  {en
+     Height of the drive info label (the free space in text form).
+  }
+  FILE_PANEL_DRIVE_INFO_HEIGHT = 17;
+
+  {en
+     Height of the graphical free space indicator.
+  }
+  FILE_PANEL_FREE_SPACE_HEIGHT = 10;
 
   {en
      Width of the drive list button.
@@ -194,7 +209,7 @@ begin
   FbtnDrive.Parent := FToolsPanel;
   FbtnDrive.Align := alNone;
   FbtnDrive.Caption := '';
-  FbtnDrive.Constraints.MinHeight := 24;
+  FbtnDrive.Constraints.MinHeight := FILE_PANEL_BUTTON_HEIGHT - 4;
   FbtnDrive.Width := FILE_PANEL_DRIVE_BUTTON_WIDTH;
   FbtnDrive.OnClick := @btnDriveClick;
   FbtnDrive.OnMouseUp := @btnDriveMouseUp;
@@ -214,7 +229,7 @@ begin
   FbtnHotList.Parent := FToolsPanel;
   FbtnHotList.Align := alNone;
   FbtnHotList.Caption := '*';
-  FbtnHotList.Constraints.MinHeight := 24;
+  FbtnHotList.Constraints.MinHeight := FILE_PANEL_BUTTON_HEIGHT - 4;
   FbtnHotList.Hint := 'Directory Hotlist';
   FbtnHotList.Width := FILE_PANEL_SMALL_BUTTON_WIDTH;
   FbtnHotList.OnClick := @btnHotListClick;
@@ -224,7 +239,7 @@ begin
   FbtnRoot.Parent := FToolsPanel;
   FbtnRoot.Align := alNone;
   FbtnRoot.Caption := DirectorySeparator;
-  FbtnRoot.Constraints.MinHeight := 24;
+  FbtnRoot.Constraints.MinHeight := FILE_PANEL_BUTTON_HEIGHT - 4;
   FbtnRoot.Hint := 'Go to root directory';
   FbtnRoot.Width := FILE_PANEL_SMALL_BUTTON_WIDTH;
   FbtnRoot.OnClick := @btnClick;
@@ -234,7 +249,7 @@ begin
   FbtnUp.Parent := FToolsPanel;
   FbtnUp.Align := alNone;
   FbtnUp.Caption := '..';
-  FbtnUp.Constraints.MinHeight := 24;
+  FbtnUp.Constraints.MinHeight := FILE_PANEL_BUTTON_HEIGHT - 4;
   FbtnUp.Hint := 'Go to parent directory';
   FbtnUp.Width := FILE_PANEL_SMALL_BUTTON_WIDTH;
   FbtnUp.OnClick := @btnClick;
@@ -244,7 +259,7 @@ begin
   FbtnHome.Parent := FToolsPanel;
   FbtnHome.Align := alNone;
   FbtnHome.Caption := '~';
-  FbtnHome.Constraints.MinHeight := 24;
+  FbtnHome.Constraints.MinHeight := FILE_PANEL_BUTTON_HEIGHT - 4;
   FbtnHome.Hint := 'Go to home directory';
   FbtnHome.Width := FILE_PANEL_SMALL_BUTTON_WIDTH;
   FbtnHome.OnClick := @btnClick;
@@ -254,7 +269,7 @@ begin
   FbtnEqual.Parent := FToolsPanel;
   FbtnEqual.Align := alNone;
   FbtnEqual.Caption := '<';
-  FbtnEqual.Constraints.MinHeight := 24;
+  FbtnEqual.Constraints.MinHeight := FILE_PANEL_BUTTON_HEIGHT - 4;
   FbtnEqual.Hint := 'Show current directory of another panel in this panel';
   FbtnEqual.Width := FILE_PANEL_SMALL_BUTTON_WIDTH;
   FbtnEqual.OnClick := @btnEqualClick;
@@ -264,7 +279,7 @@ begin
   FpbxDrive.Parent := FToolsPanel;
   FpbxDrive.Align := alNone;
   FpbxDrive.Caption := '';
-  FpbxDrive.Height := 10;
+  FpbxDrive.Height := FILE_PANEL_FREE_SPACE_HEIGHT;
   FpbxDrive.OnPaint := @pbxDrivePaint;
 
   UpdateLayout;
@@ -295,6 +310,7 @@ procedure TFilePanel.UpdateLayout;
 var
   Top: Integer;
   AWidth, AHeight, X, AButtonHeight: Integer;
+  ALabelLeft, ALabelWidth: Integer;
 begin
   if not Assigned(FContainer) then Exit;
 
@@ -312,56 +328,69 @@ begin
     AHeight := FToolsPanel.Height;
     FToolsPanel.SetBounds(0, Top, AWidth, AHeight);
 
-    AButtonHeight := AHeight - 2;
-    if AButtonHeight < 24 then
-      AButtonHeight := 24;
+    AButtonHeight := AHeight - 4;
+    if AButtonHeight < FILE_PANEL_BUTTON_HEIGHT then
+      AButtonHeight := FILE_PANEL_BUTTON_HEIGHT;
 
     // The small buttons are placed from the right edge to the left.
     X := AWidth;
     if FbtnEqual.Visible then
     begin
       Dec(X, FbtnEqual.Width);
-      FbtnEqual.SetBounds(X, 1, FbtnEqual.Width, AButtonHeight);
+      FbtnEqual.SetBounds(X, 2, FbtnEqual.Width, AButtonHeight);
     end;
     if FbtnHome.Visible then
     begin
       Dec(X, FbtnHome.Width);
-      FbtnHome.SetBounds(X, 1, FbtnHome.Width, AButtonHeight);
+      FbtnHome.SetBounds(X, 2, FbtnHome.Width, AButtonHeight);
     end;
     if FbtnUp.Visible then
     begin
       Dec(X, FbtnUp.Width);
-      FbtnUp.SetBounds(X, 1, FbtnUp.Width, AButtonHeight);
+      FbtnUp.SetBounds(X, 2, FbtnUp.Width, AButtonHeight);
     end;
     if FbtnRoot.Visible then
     begin
       Dec(X, FbtnRoot.Width);
-      FbtnRoot.SetBounds(X, 1, FbtnRoot.Width, AButtonHeight);
+      FbtnRoot.SetBounds(X, 2, FbtnRoot.Width, AButtonHeight);
     end;
     if FbtnHotList.Visible then
     begin
       Dec(X, FbtnHotList.Width);
-      FbtnHotList.SetBounds(X, 1, FbtnHotList.Width, AButtonHeight);
+      FbtnHotList.SetBounds(X, 2, FbtnHotList.Width, AButtonHeight);
     end;
 
     if FbtnDrive.Visible then
-      FbtnDrive.SetBounds(0, 1, FbtnDrive.Width, AButtonHeight);
+      FbtnDrive.SetBounds(0, 2, FbtnDrive.Width, AButtonHeight);
 
     if X <= FbtnDrive.Width + 4 then
       X := FbtnDrive.Width + 4;
 
+    // The drive info label shows the free space in text form and the paint
+    // box below it draws the graphical free space indicator. They must not
+    // overlap, so the label takes the upper part of the tools row.
+    ALabelLeft := FbtnDrive.Width + 2;
+    ALabelWidth := X - FbtnDrive.Width - 4;
+    if ALabelWidth < 10 then
+      ALabelWidth := 10;
+
     if FlblDriveInfo.Visible then
-      FlblDriveInfo.SetBounds(FbtnDrive.Width + 2, 1, X - FbtnDrive.Width - 4,
-                              AButtonHeight - 2)
-    else if FpbxDrive.Visible then
-      FpbxDrive.SetBounds(FbtnDrive.Width + 2, 1, X - FbtnDrive.Width - 4, 10);
+      FlblDriveInfo.SetBounds(ALabelLeft, 2, ALabelWidth, FILE_PANEL_DRIVE_INFO_HEIGHT)
+    else
+      FlblDriveInfo.SetBounds(ALabelLeft, 2, ALabelWidth, 1);
+
+    if FpbxDrive.Visible then
+    begin
+      if FlblDriveInfo.Visible then
+        FpbxDrive.SetBounds(ALabelLeft, 2 + FILE_PANEL_DRIVE_INFO_HEIGHT + 2,
+                            ALabelWidth, FILE_PANEL_FREE_SPACE_HEIGHT)
+      else
+        FpbxDrive.SetBounds(ALabelLeft, (AHeight - FILE_PANEL_FREE_SPACE_HEIGHT) div 2,
+                            ALabelWidth, FILE_PANEL_FREE_SPACE_HEIGHT);
+    end;
 
     Inc(Top, AHeight);
   end;
-
-  // The free space indicator is drawn over the lower part of the drive
-  // info label.
-
 
   if Assigned(FNotebook) then
     FNotebook.SetBounds(0, Top, AWidth, FContainer.Height - Top);
