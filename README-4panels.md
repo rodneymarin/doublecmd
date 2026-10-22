@@ -200,7 +200,7 @@ Después, dentro de WSL:
 
 ```bash
 bash install/wsl/provision-wsl.sh
-lcl=gtk3 ./build.sh release
+lcl=qt6 ./build.sh release
 ```
 
 ### 4.2 Vía VM con QEMU (funciona incluso sin WSL2)
@@ -219,22 +219,41 @@ powershell -ExecutionPolicy Bypass -File .\install\linux-vm\make-seed.ps1
 powershell -ExecutionPolicy Bypass -File .\install\linux-vm\seed-server.ps1   # en otra terminal
 
 # 3. Levantar la VM (SSH en localhost:2222)
-powershell -ExecutionPolicy Bypass -File .\install\linux-vm\run-vm.ps1 -Cpus 8 -MemMB 12288
+powershell -ExecutionPolicy Bypass -File .\install\linux-vm\run-vm.ps1 -Cpus 8 -MemMB 12288 -Display none
 
 # 4. Dentro de la VM
 tar xzf /tmp/dc-src.tar.gz -C ~/doublecmd    # el fuente, empaquetado desde Windows
 bash install/linux-vm/provision-vm.sh
 ```
 
-Detalles importantes de esta vía:
+#### Ver y manejar la app desde Windows
 
-- El widgetset es **gtk2** (gtk3 exige Lazarus ≥ 4.9; la rama `fixes_5` es 4.8).
+La VM publica su escritorio X por **noVNC**, así que se maneja desde el
+navegador sin instalar nada:
+
+| Qué | Dónde |
+|-----|-------|
+| Escritorio Linux con el DC | **http://localhost:6080/vnc.html** |
+| VNC nativo (cualquier cliente) | `localhost:5900` |
+| SSH | `localhost:2222` (usuario `ubuntu`, clave `dcbuild`) |
+
+El servicio `dcdesktop.service` arranca solo al iniciar la VM: Xorg (driver
+`dummy`) + openbox + Double Commander + x11vnc + websockify.
+
+#### Detalles importantes de esta vía
+
+- **Widgetset `qt6`** (no gtk2): requiere el binding `qt6pas` 6.2.10, que se
+  obtiene del paquete Debian `libqt6pas6-dev` (proyecto `davidbannon/libqt6pas`)
+  y el runtime `libqt6pas6`. El `.so` también viene en
+  `github.com/doublecmd/external` → `linux.tar.gz`.
+- El **LCL de Lazarus** se compila aparte con `make LCL_PLATFORM=qt6` (el
+  `make all` normal compila el widgetset por defecto).
 - Los scripts del repo llegan con **CRLF** desde Windows: hay que normalizarlos
   (`sed -i 's/\r$//'`) o el hook `ExecuteBefore` del `.lpi` falla con exit 127.
-- La compilación de Lazarus desde fuente tarda ~13 min con 8 vCPU emulados; la
-  de Double Commander, ~6 min (296.719 líneas).
-- Para ver la app: `Xvfb :99 -screen 0 1600x1000x24 & DISPLAY=:99 ./doublecmd`
-  y capturar con `import -window root captura.png`.
+- La VM **no tiene framebuffer** (`/dev/fb0` no existe), por eso el display de
+  QEMU solo muestra la consola de texto y el escritorio se ve por VNC.
+- Tiempos con 8 vCPU emulados: Lazarus ~13 min, Double Commander ~6 min
+  (296.719 líneas).
 
 ### 4.3 Recipe original del proyecto (Linux nativo)
 
@@ -246,7 +265,7 @@ sudo apt install fp-units-rtl fp-units-gtk2 fp-compiler fp-units-base fp-units-f
 git clone --branch fixes_5 https://gitlab.com/freepascal.org/lazarus/lazarus.git
 cd lazarus && make all && sudo make install
 # ...
-lcl=gtk3 ./build.sh release
+lcl=qt6 ./build.sh release
 ```
 
 ### 4.4 Empaquetado
