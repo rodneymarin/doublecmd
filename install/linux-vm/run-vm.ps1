@@ -20,9 +20,12 @@ $log    = Join-Path $WorkDir 'qemu-console.log'
 
 if(-not (Test-Path $base)){ throw "Falta $base" }
 
-if(Test-Path $overlay){ Remove-Item $overlay -Force }
-& qemu-img create -f qcow2 -F qcow2 -b $base $overlay $DiskSize | Out-Null
-"overlay creado: $overlay"
+if(-not (Test-Path $overlay)){
+  & qemu-img create -f qcow2 -F qcow2 -b $base $overlay $DiskSize | Out-Null
+  "overlay creado: $overlay"
+} else {
+  "overlay existente (se conserva): $overlay"
+}
 
 # En Windows no hay KVM: QEMU usa TCG (emulacion por software).
 $kvm = @('-accel','tcg,thread=multi')
