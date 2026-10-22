@@ -1612,13 +1612,16 @@ end;
 procedure TMainCommands.DoComputeSizeAndPosForWindowInMiddle(var iPosX:integer; var iPosY:integer; var iWidth:integer; var iHeight:integer);
 var
   pl,pr: TPoint;
+  AFrameLeft, AFrameRight: TFileView;
 begin
-  pl := frmMain.FrameLeft.ClientToScreen(Classes.Point(0,0));
-  pr := frmMain.FrameRight.ClientToScreen(Classes.Point(0,0));
-  iWidth := (((pr.x+frmMain.FrameRight.Width)- pl.x) * 68) div 100;
-  iHeight := frmMain.FrameLeft.Height;
-  iPosX := pl.x + (((frmMain.FrameLeft.Width+frmMain.FrameRight.Width) - iWidth) div 2);
-  iPosY := pl.y;
+  AFrameLeft := frmMain.PanelFrame(0);
+  AFrameRight := frmMain.PanelFrame(FILE_PANEL_COUNT - 1);
+  pl := AFrameLeft.ClientToScreen(Classes.Point(0,0));
+  pr := AFrameRight.ClientToScreen(Classes.Point(AFrameRight.Width, AFrameRight.Height));
+  iWidth := (((pr.x - pl.x) * 68) div 100);
+  iHeight := ((pr.y - pl.y) * 68) div 100;
+  iPosX := pl.x + ((pr.x - pl.x - iWidth) div 2);
+  iPosY := pl.y + ((pr.y - pl.y - iHeight) div 2);
 end;
 
 { TMainCommands.cm_ShowButtonMenu }
@@ -3033,6 +3036,7 @@ procedure TMainCommands.cm_SwitchIgnoreList(const Params: array of string);
 {$OPTIMIZATION OFF}
 var
   WantedIgnoreList, BoolValue:boolean;
+  I: Integer;
 begin
   WantedIgnoreList:=gIgnoreListFileEnabled;
   with frmMain do
@@ -3053,9 +3057,9 @@ begin
     begin
       gIgnoreListFileEnabled:=WantedIgnoreList;
       actSwitchIgnoreList.Checked:= gIgnoreListFileEnabled;
-      //repaint both panels
-      FrameLeft.Reload;
-      FrameRight.Reload;
+      //repaint all panels
+      for I := 0 to FILE_PANEL_COUNT - 1 do
+        frmMain.PanelFrame(TFilePanelIndex(I)).Reload;
     end;
   end;
 end;
@@ -3569,10 +3573,12 @@ begin
 end;
 
 procedure TMainCommands.DoMainFontZoom( const inc: Integer );
+var
+  I: Integer;
 begin
   gFonts[dcfMain].Size:= gFonts[dcfMain].Size + inc;
-  frmMain.FrameLeft.UpdateView;
-  frmMain.FrameRight.UpdateView;
+  for I := 0 to FILE_PANEL_COUNT - 1 do
+    frmMain.PanelFrame(TFilePanelIndex(I)).UpdateView;
 end;
 
 function TMainCommands.MainFontZoomIn: Boolean;

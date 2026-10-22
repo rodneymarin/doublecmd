@@ -780,6 +780,7 @@ type
     procedure ToolbarExecuteCommand(ToolItem: TKASToolItem);
     procedure ToolbarExecuteProgram(ToolItem: TKASToolItem);
     procedure PanelDriveBarExecuteDrive(ToolItem: TKASToolItem);
+    procedure PanelDiskToolButtonClick(Sender: TObject);
     procedure SetDragCursor(Shift: TShiftState);
     {$IFDEF DARWIN}
     procedure GlobalMacOSKeyDownHandler(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -878,6 +879,20 @@ type
        Returns the file view of the panel with the given index.
      }
     function PanelFrame(aIndex: TFilePanelIndex): TFileView;
+    {en
+       Returns the index of the panel which owns the given notebook.
+       Returns -1 if the notebook does not belong to any file panel.
+     }
+    function PanelIndexOf(ANoteBook: TFileViewNotebook): Integer;
+    {en
+       Returns the index of the panel which owns the given drive toolbar.
+       Returns -1 if the toolbar does not belong to any file panel.
+     }
+    function PanelIndexOfDiskToolBar(AToolBar: TKASToolBar): Integer;
+    {en
+       Returns True if any of the file panels has the focus.
+     }
+    function AnyFileViewFocused: Boolean;
     {en
        Returns the file panel with the given index.
      }
@@ -1296,8 +1311,8 @@ begin
   // 3. when setting PageIndex in LoadTabsXml(), it will cause an extra tab switch.
   // 4. and it will cause an extra directory to be monitored in FileView.
   // 5. the issue can be effectively avoided by setting a larger width.
-  nbLeft.Width:= 2048;
-  nbRight.Width:= 2048;
+  for I := 0 to FILE_PANEL_COUNT - 1 do
+    GetPanelNotebook(TFilePanelIndex(I)).Width:= 2048;
   {$ENDIF}
 
   LoadTabs;
@@ -1441,19 +1456,15 @@ procedure TfrmMain.dskToolButtonMouseDown(Sender: TObject;
   Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 var
   ANotebook: TFileViewNotebook;
+  AIndex: Integer;
 begin
   if Button = mbMiddle then
   begin
     if Sender is TKASToolButton then
     begin
-      if TKASToolButton(Sender).ToolBar = dskLeft then
-      begin
-        ANotebook:= nbLeft;
-      end
-      else if gDriveBar2 then
-      begin
-        ANotebook:= nbRight;
-      end
+      AIndex := PanelIndexOfDiskToolBar(TKASToolButton(Sender).ToolBar);
+      if AIndex >= 0 then
+        ANotebook:= GetPanelNotebook(TFilePanelIndex(AIndex))
       else begin
         ANotebook:= ActiveNotebook;
       end;
@@ -2156,7 +2167,7 @@ begin
   begin
     if GetKeyShiftStateEx * KeyModifiersShortcutNoText = [ssAlt] then
     begin
-      if FrameLeft.Focused or FrameRight.Focused then
+      if AnyFileViewFocused then
       begin
         TypeInCommandLine(UTF8Key);
         UTF8Key := '';
@@ -2173,9 +2184,8 @@ end;
 
 procedure TfrmMain.FormUTF8KeyPress(Sender: TObject; var UTF8Key: TUTF8Char);
 begin
-  // Either left or right panel has to be focused.
-  if not FrameLeft.Focused and
-     not FrameRight.Focused then
+  // A file panel has to be focused.
+  if not AnyFileViewFocused then
   begin
     Exit;
   end;
@@ -2309,6 +2319,21 @@ begin
         Exit;
       end;
   end;
+end;
+
+procedure TfrmMain.PanelDiskToolButtonClick(Sender: TObject);
+var
+  AIndex: Integer;
+  AFrame: TFileView;
+begin
+  AIndex := -1;
+  if Sender is TKASToolButton then
+    AIndex := PanelIndexOfDiskToolBar(TKASToolButton(Sender).ToolBar);
+  if AIndex < 0 then
+    Exit;
+  AFrame := PanelFrame(TFilePanelIndex(AIndex));
+  if Assigned(AFrame) then
+    PanelButtonClick(Sender as TSpeedButton, AFrame);
 end;
 
 procedure TfrmMain.MainToolBarDragDrop(Sender, Source: TObject; X, Y: Integer);
@@ -2558,29 +2583,27 @@ end;
 procedure TfrmMain.nbPageAfterMouseDown(Data: PtrInt);
 var
   Notebook: TFileViewNotebook;
+  AIndex: Integer;
+  AFrame: TFileView;
 begin
   if TObject(Data) is TFileViewNotebook then
   begin
     Notebook := TObject(Data) as TFileViewNotebook;
 
-    if (Notebook = nbLeft) and (FrameLeft <> nil) then
+    AIndex := PanelIndexOf(Notebook);
+    if AIndex >= 0 then
+    begin
+      AFrame := PanelFrame(TFilePanelIndex(AIndex));
+      if Assigned(AFrame) then
       begin
-        if FActivePanel = 0 then // same panel
-          FrameLeft.SetFocus
+        if Ord(FActivePanel) = AIndex then // same panel
+          AFrame.SetFocus
         else if (tb_activate_panel_on_click in gDirTabOptions) then
-          SetActiveFrame(0)
+          SetActiveFrame(TFilePanelIndex(AIndex))
         else
-          FrameRight.SetFocus;
+          ActiveFrame.SetFocus;
       end;
-    if (Notebook = nbRight) and (FrameRight <> nil) then
-      begin
-        if FActivePanel = 1 then // same panel
-          FrameRight.SetFocus
-        else if (tb_activate_panel_on_click in gDirTabOptions) then
-          SetActiveFrame(1)
-        else
-          FrameLeft.SetFocus;
-      end;
+    end;
   end;
 end;
 
@@ -2803,9 +2826,8 @@ procedure TfrmMain.FormKeyPress(Sender: TObject; var Key: Char);
 var
   ModifierKeys: TShiftState;
 begin
-  // Either left or right panel has to be focused.
-  if not FrameLeft.Focused and
-     not FrameRight.Focused then
+  // A file panel has to be focused.
+  if not AnyFileViewFocused then
   begin
     Exit;
   end;
@@ -3097,6 +3119,53 @@ begin
     Result := nil;
 end;
 
+function TfrmMain.PanelIndexOf(ANoteBook: TFileViewNotebook): Integer;
+var
+  I: Integer;
+begin
+  Result := -1;
+  if not Assigned(ANoteBook) then
+    Exit;
+  for I := 0 to FILE_PANEL_COUNT - 1 do
+    if GetPanelNotebook(TFilePanelIndex(I)) = ANoteBook then
+    begin
+      Result := I;
+      Exit;
+    end;
+end;
+
+function TfrmMain.PanelIndexOfDiskToolBar(AToolBar: TKASToolBar): Integer;
+var
+  I: Integer;
+begin
+  Result := -1;
+  if not Assigned(AToolBar) then
+    Exit;
+  for I := 0 to FILE_PANEL_COUNT - 1 do
+    if Assigned(FPanels[I]) and (FPanels[I].DiskToolBar = AToolBar) then
+    begin
+      Result := I;
+      Exit;
+    end;
+end;
+
+function TfrmMain.AnyFileViewFocused: Boolean;
+var
+  I: Integer;
+  AFrame: TFileView;
+begin
+  Result := False;
+  for I := 0 to FILE_PANEL_COUNT - 1 do
+  begin
+    AFrame := PanelFrame(TFilePanelIndex(I));
+    if Assigned(AFrame) and AFrame.Focused then
+    begin
+      Result := True;
+      Exit;
+    end;
+  end;
+end;
+
 function TfrmMain.ActiveFrame: TFileView;
 begin
   Result := PanelFrame(FActivePanel);
@@ -3136,12 +3205,16 @@ procedure TfrmMain.ForEachView(CallbackFunction: TForEachViewFunction; UserData:
   var
     i: Integer;
   begin
+    if not Assigned(ANoteBook) then
+      Exit;
     for i := 0 to ANoteBook.PageCount - 1 do
       CallbackFunction(ANoteBook.View[i], UserData);
   end;
+var
+  I: Integer;
 begin
-  EnumerateNotebook(nbLeft);
-  EnumerateNotebook(nbRight);
+  for I := 0 to FILE_PANEL_COUNT - 1 do
+    EnumerateNotebook(GetPanelNotebook(TFilePanelIndex(I)));
 end;
 
 procedure TfrmMain.GetListOpenedPaths(const APaths: TStringList);
@@ -3158,10 +3231,12 @@ procedure TfrmMain.GetListOpenedPaths(const APaths: TStringList);
     end;
   end;
 
+var
+  PanelIndex: Integer;
 begin
   APaths.Clear;
-  GetNotebookPaths(nbLeft);
-  GetNotebookPaths(nbRight);
+  for PanelIndex := 0 to FILE_PANEL_COUNT - 1 do
+    GetNotebookPaths(GetPanelNotebook(TFilePanelIndex(PanelIndex)));
 end;
 
 procedure TfrmMain.AppException(Sender: TObject; E: Exception);
@@ -4345,9 +4420,16 @@ begin
 end;
 
 procedure TfrmMain.SetDragCursor(Shift: TShiftState);
+var
+  I: Integer;
+  AFrame: TFileView;
 begin
-  FrameLeft.SetDragCursor(Shift);
-  FrameRight.SetDragCursor(Shift);
+  for I := 0 to FILE_PANEL_COUNT - 1 do
+  begin
+    AFrame := PanelFrame(TFilePanelIndex(I));
+    if Assigned(AFrame) then
+      AFrame.SetDragCursor(Shift);
+  end;
 end;
 
 procedure TfrmMain.CreateWnd;
@@ -4450,9 +4532,8 @@ begin
   if ActiveControl = nil then
     ActiveFrame.SetFocus;
 
-  // Either left or right panel has to be focused.
-  if not FrameLeft.Focused and
-     not FrameRight.Focused then
+  // A file panel has to be focused.
+  if not AnyFileViewFocused then
   begin
     Exit;
   end;
@@ -4701,6 +4782,8 @@ begin
   for I := 0 to FILE_PANEL_COUNT - 1 do
   begin
     APanel := TFilePanel.Create(Self, TFilePanelIndex(I), pnlNotebooks);
+    APanel.DiskToolBar.OnToolButtonClick := @PanelDiskToolButtonClick;
+    APanel.DiskToolBar.OnToolButtonMouseDown := @dskToolButtonMouseDown;
     APanel.OnButtonClick := @PanelButtonClickEvent;
     APanel.OnHotListButtonClick := @PanelHotListClick;
     APanel.OnDriveButtonClick := @PanelDriveButtonClick;
@@ -6888,29 +6971,23 @@ end;
 procedure TfrmMain.UpdateSelectedDrive(ANoteBook: TFileViewNotebook);
 var
   FileView: TFileView;
+  AIndex: Integer;
+  APanel: TFilePanel;
 begin
   FileView := ANoteBook.ActiveView;
   if Assigned(FileView) then
   begin
-    // Change left drive toolbar for left drive button.
-    if (ANoteBook = nbLeft) then
+    // Update the drive toolbar and the drive button of the owning panel.
+    AIndex := PanelIndexOf(ANoteBook);
+    if AIndex >= 0 then
     begin
-      if gDriveBar1 then // If drives toolbar enabled at all
+      APanel := GetPanel(AIndex);
+      if Assigned(APanel) then
       begin
-        if gDriveBar2 then // If showing two toolbars
-          UpdateDriveToolbarSelection(dskLeft, FileView)
-        else
-          // dskRight is the main toolbar.
-          UpdateDriveToolbarSelection(dskRight, FileView);
+        if gDriveBar1 then // If drives toolbar enabled at all
+          UpdateDriveToolbarSelection(APanel.DiskToolBar, FileView);
+        UpdateDriveButtonSelection(APanel.btnDrive, FileView);
       end;
-      UpdateDriveButtonSelection(btnLeftDrive, FileView);
-    end
-    // Change right drive toolbar for right drive button
-    else if (ANoteBook = nbRight) then
-    begin
-      if gDriveBar1 then
-        UpdateDriveToolbarSelection(dskRight, FileView);
-      UpdateDriveButtonSelection(btnRightDrive, FileView);
     end;
   end;
 end;
@@ -6920,6 +6997,7 @@ procedure TfrmMain.OnDriveIconLoaded(Data: PtrInt);
 var
   ADrive: TKASDriveItem;
   AIcon: TDriveIcon absolute Data;
+  I: Integer;
 
   procedure UpdateDriveIcon(dskPanel: TKASToolBar);
   var
@@ -6940,8 +7018,12 @@ var
   end;
 
 begin
-  if gDriveBar2 then UpdateDriveIcon(dskLeft);
-  if gDriveBar1 then UpdateDriveIcon(dskRight);
+  if gDriveBar1 then
+    for I := 0 to FILE_PANEL_COUNT - 1 do
+    begin
+      if not Assigned(FPanels[I]) then Continue;
+      UpdateDriveIcon(FPanels[I].DiskToolBar);
+    end;
   AIcon.Free;
 end;
 {$ENDIF}

@@ -37,6 +37,7 @@ uses
   uFileView,
   uDragDropEx,
   uFileViewNotebook,
+  uFilePanelSelect,
   uDebug;
 
 type
@@ -900,12 +901,14 @@ procedure TFileViewWithMainCtrl.MainControlEndDrag(Sender, Target: TObject; X, Y
     if aFileView is TFileViewWithMainCtrl then
       TFileViewWithMainCtrl(aFileView).SetDropFileIndex(-1);
   end;
+var
+  I: Integer;
 begin
   // If cancelled by the user, DragManager does not send drag-leave event
   // to the target, so we must clear the DropRow in both panels.
 
-  ClearDropNode(frmMain.FrameLeft);
-  ClearDropNode(frmMain.FrameRight);
+  for I := 0 to FILE_PANEL_COUNT - 1 do
+    ClearDropNode(frmMain.PanelFrame(TFilePanelIndex(I)));
 
   if uDragDropEx.TransformDragging = False then
     ClearAfterDragDrop;
