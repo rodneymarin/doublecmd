@@ -168,26 +168,92 @@ proyecto ya no usa el splitter arrastrable, así que
 
 ---
 
-## 4. Compilar para Linux (pendiente)
+## 4. Compilar para Linux
 
-El árbol de fuentes es idéntico para Linux; no hay nada específico de Windows
-en el código de los paneles. El procedimiento es el del CI oficial del
-proyecto (`.github/workflows/snapshots.yml`, job `build-lin`):
+El árbol de fuentes es idéntico para Linux: **no hay nada específico de Windows**
+en el código de los paneles, así que el mismo código compila y corre en Linux
+sin cambios.
+
+Hay dos vías disponibles desde una máquina Windows:
+
+### 4.1 Vía WSL2 (la recomendada si tu Windows lo soporta)
+
+WSL2 necesita el componente opcional **Virtual Machine Platform** y
+**Windows Subsystem for Linux** habilitados:
+
+```powershell
+# desde una consola ELEVADA
+dism /online /enable-feature /featurename:Microsoft-Windows-Subsystem-Linux /all /norestart
+dism /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart
+wsl --install -d Ubuntu-22.04
+```
+
+> **Importante:** desactivá *Fast Startup* antes de reiniciar, o el reinicio
+> puede restaurar el kernel anterior y **revertir** la activación de los
+> componentes:
+> ```powershell
+> reg add "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Power" /v HiberbootEnabled /t REG_DWORD /d 0 /f
+> powercfg /hibernate off
+> ```
+
+Después, dentro de WSL:
 
 ```bash
-sudo apt install fp-units-rtl fp-units-gtk2 fp-compiler fp-units-base \
-                 fp-units-fcl fp-units-misc fp-units-net fp-utils patchelf \
-                 libgtk-3-dev libdbus-1-dev zip
-# Lazarus desde fuente (rama fixes_5):
+bash install/wsl/provision-wsl.sh
+lcl=gtk3 ./build.sh release
+```
+
+### 4.2 Vía VM con QEMU (funciona incluso sin WSL2)
+
+Si WSL2 no es viable (por ejemplo, en builds *Insider* donde el payload de
+virtualización no se aplica), se puede usar una VM Ubuntu completa con QEMU,
+que emula x86_64 por software y no depende de ninguna función de
+virtualización de Windows.
+
+```powershell
+# 1. Instalar QEMU
+winget install SoftwareFreedomConservancy.QEMU
+
+# 2. Preparar la semilla de cloud-init y el servidor que la publica
+powershell -ExecutionPolicy Bypass -File .\install\linux-vm\make-seed.ps1
+powershell -ExecutionPolicy Bypass -File .\install\linux-vm\seed-server.ps1   # en otra terminal
+
+# 3. Levantar la VM (SSH en localhost:2222)
+powershell -ExecutionPolicy Bypass -File .\install\linux-vm\run-vm.ps1 -Cpus 8 -MemMB 12288
+
+# 4. Dentro de la VM
+tar xzf /tmp/dc-src.tar.gz -C ~/doublecmd    # el fuente, empaquetado desde Windows
+bash install/linux-vm/provision-vm.sh
+```
+
+Detalles importantes de esta vía:
+
+- El widgetset es **gtk2** (gtk3 exige Lazarus ≥ 4.9; la rama `fixes_5` es 4.8).
+- Los scripts del repo llegan con **CRLF** desde Windows: hay que normalizarlos
+  (`sed -i 's/\r$//'`) o el hook `ExecuteBefore` del `.lpi` falla con exit 127.
+- La compilación de Lazarus desde fuente tarda ~13 min con 8 vCPU emulados; la
+  de Double Commander, ~6 min (296.719 líneas).
+- Para ver la app: `Xvfb :99 -screen 0 1600x1000x24 & DISPLAY=:99 ./doublecmd`
+  y capturar con `import -window root captura.png`.
+
+### 4.3 Recipe original del proyecto (Linux nativo)
+
+Es el que usa el CI oficial (`.github/workflows/snapshots.yml`, job `build-lin`):
+
+```bash
+sudo apt install fp-units-rtl fp-units-gtk2 fp-compiler fp-units-base fp-units-fcl \
+                 fp-units-misc fp-units-net fp-utils patchelf libgtk-3-dev libdbus-1-dev zip
 git clone --branch fixes_5 https://gitlab.com/freepascal.org/lazarus/lazarus.git
 cd lazarus && make all && sudo make install
 # ...
-./build.sh release
+lcl=gtk3 ./build.sh release
 ```
 
-En Windows lo más práctico es **WSL2** con una Ubuntu, replicando el mismo
-recipe dentro de WSL. (El cross-compile nativo Windows → Linux de una
-aplicación LCL con interfaz gráfica no está soportado por Lazarus.)
+### 4.4 Empaquetado
+
+```bash
+install/create_packages.sh          # deb / rpm / tar.xz
+```
 
 ---
 
