@@ -5,6 +5,10 @@ param(
   [int]$SshPort = 2222,
   [int]$SeedPort = 8000,
   [string]$DiskSize = '24G',
+  # gtk: abre una ventana de QEMU con el escritorio Linux (interactivo).
+  # none: la VM queda headless (solo por SSH).
+  [ValidateSet('gtk','sdl','none')]
+  [string]$Display = 'gtk',
   [switch]$NoKvm
 )
 $ErrorActionPreference = 'Stop'
@@ -40,13 +44,13 @@ $args = @(
   '-smp', $Cpus,
   '-cpu','max',
   '-drive', "file=$overlay,if=virtio,format=qcow2,cache=writeback",
-  '-netdev', "user,id=n0,hostfwd=tcp::${SshPort}-:22",
+  '-netdev', "user,id=n0,hostfwd=tcp::${SshPort}-:22,hostfwd=tcp::6080-:6080,hostfwd=tcp::5900-:5900",
   '-device','virtio-net-pci,netdev=n0',
-  '-display','none',
+  '-display', $Display,
   '-serial', "file:$log",
   '-monitor','none',
   '-rtc','base=utc'
 ) + $kvm + $smbios
 
-"arrancando QEMU (SSH en localhost:${SshPort}) ..."
+"arrancando QEMU (display=$Display, SSH en localhost:${SshPort}) ..."
 & qemu-system-x86_64 @args
