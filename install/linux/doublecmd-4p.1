@@ -1,10 +1,10 @@
-.TH "doublecmd" "1" "6 June 2018" "Double Commander"
+.TH "doublecmd-4p" "1" "6 June 2018" "Double Commander 4P"
 .SH NAME
-doublecmd \- Twin-panel (commander-style) file manager.
+doublecmd-4p \- Twin-panel (commander-style) file manager fork with four panels.
 
 .SH SYNOPSIS
 .\" General
-.B doublecmd
+.B doublecmd-4p
 [\-C] [\-T] [\-P L|R] [
 .I path1
 ] [
@@ -12,7 +12,7 @@ doublecmd \- Twin-panel (commander-style) file manager.
 ]
 .br
 .\" Alternative form
-.B doublecmd
+.B doublecmd-4p
 [\-C] [\-T] [\-P L|R] [\-L
 .I path1
 ] [\-R
@@ -20,8 +20,7 @@ doublecmd \- Twin-panel (commander-style) file manager.
 ]
 
 .SH DESCRIPTION
-Double Commander is a free cross platform open source file manager with two panels side by side.
-It is inspired by Total Commander and features some new ideas.
+Double Commander 4P is a fork of Double Commander (a free cross platform open source file manager) that replaces the two-panel layout with FOUR file panels arranged in a 2x2 grid. It installs as a separate application: it can coexist with an existing installation of the original Double Commander and uses its own user configuration directory ($HOME/.config/doublecmd-4p).
 
 .SH OPTIONS
 The switches are NOT case sensitive.
@@ -55,7 +54,7 @@ Opens the passed directory(ies) in new tab(s)
 .B "\-\-config\-dir=<path>"
 Set custom directory path with Double Commander configurations files.
 .br
-Default is $HOME/.config/doublecmd.
+Default is $HOME/.config/doublecmd-4p.
 .TP
 .B "\-\-servername=x"
 Sets the name of the instance (server) Double Commander, which can then be used to pass parameters.

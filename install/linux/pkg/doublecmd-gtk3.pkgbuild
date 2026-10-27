@@ -1,0 +1,43 @@
+# Maintainer: Double Commander build <doublecmd@example.org>
+#
+# Paquete de Arch Linux para el fork de Double Commander con 4 paneles.
+#
+#   git clone https://github.com/rodneymarin/doublecmd.git
+#   cd doublecmd/install/linux/pkg
+#   makepkg -si
+#
+# Requisitos: Lazarus 4.x o superior (con FPC 3.2.2) y las units de gtk3.
+pkgname=doublecmd-4p
+pkgver=1.3.0
+pkgrel=1
+pkgdesc="Twin-panel (commander-style) file manager fork with four panels (GTK3)"
+arch=('x86_64')
+url="https://github.com/rodneymarin/doublecmd"
+license=('GPL-2.0-or-later')
+depends=('gtk3' 'glib2')
+makedepends=('git' 'fpc' 'lazarus' 'patchelf' 'zip' 'which')
+optdepends=('p7zip: support for 7zip archives'
+            'libunrar: support for rar archives')
+options=('!strip')
+source=("$pkgname::git+https://github.com/rodneymarin/doublecmd.git")
+sha256sums=('SKIP')
+
+pkgver() {
+  cd "$srcdir/$pkgname"
+  printf '%s.r%s' \
+    "$(grep -oP '(?<=MajorVersionNr" Value=")[0-9.]+' src/doublecmd.lpi | head -1)" \
+    "$(git rev-list --count HEAD)"
+}
+
+build() {
+  cd "$srcdir/$pkgname"
+  # Widgetset gtk3: es el que esta soportado por el CI oficial del proyecto.
+  lcl=gtk3 ./build.sh release
+}
+
+package() {
+  cd "$srcdir/$pkgname"
+  # Arch usa /usr/lib, no /usr/lib64: hay que forzar LIB_SUFFIX vacio.
+  sed -i -e 's/LIB_SUFFIX=.*/LIB_SUFFIX=/g' install/linux/install.sh
+  CPU_TARGET=x86_64 install/linux/install.sh --install-prefix="$pkgdir"
+}

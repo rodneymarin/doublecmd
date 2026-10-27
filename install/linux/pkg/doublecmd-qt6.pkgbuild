@@ -1,0 +1,56 @@
+# Maintainer: Double Commander build <doublecmd@example.org>
+#
+# PKGBUILD BINARIO: empaqueta un arbol ya compilado con el widgetset qt6
+# (no compila nada). El binding Qt6Pas no esta en los repos oficiales de
+# Arch, asi que el paquete lo lleva DENTRO de su carpeta privada
+# /usr/lib/doublecmd-4p/ (nunca en /usr/lib) y el binario resuelve con
+# RUNPATH $ORIGIN: se puede instalar en un sistema que ya tenga los
+# paquetes AUR de qt6pas y/o libunrar sin pisarlos y sin chocar con ellos.
+#
+# Uso:
+#   mkdir -p doublecmd-qt6/src
+#   cp -a <arbol-qt6-compilado>/. doublecmd-qt6/src/
+#   cp doublecmd-qt6.pkgbuild doublecmd-qt6/
+#   cd doublecmd-qt6 && makepkg -si
+#
+# El arbol de "src" debe traer en la raiz: doublecmd (binario qt6),
+# doublecmd.zdli, libQt6Pas.so.6.2.10, libunrar.so y los ficheros
+# habituales del arbol del repo (default/, doc/, language/, pixmaps/, ...)
+pkgname=doublecmd-4p-qt6
+pkgver=1.3.0
+pkgrel=1
+pkgdesc="Twin-panel (commander-style) file manager fork with four panels (Qt6)"
+arch=('x86_64')
+url="https://github.com/rodneymarin/doublecmd"
+license=('GPL-2.0-or-later')
+depends=('qt6-base')
+optdepends=('p7zip: support for 7zip archives')
+provides=('doublecmd-4p')
+conflicts=('doublecmd-4p')
+options=('!strip')
+
+package() {
+  cd "$srcdir"
+  # OJO: las libs privadas NO deben quedar en /usr/lib del sistema
+  # (install.sh copia los *.so* del raiz); se apartan antes y se meten
+  # una a una en la carpeta privada del fork.
+  mkdir -p _bundled
+  mv libQt6Pas.so.6.2.10 _bundled/
+  mv libunrar.so _bundled/
+  rm -f libQt6Pas.so libQt6Pas.so.6
+
+  # Arch usa /usr/lib, no /usr/lib64: hay que forzar LIB_SUFFIX vacio.
+  sed -i -e 's/LIB_SUFFIX=.*/LIB_SUFFIX=/g' install/linux/install.sh
+  CPU_TARGET=x86_64 install/linux/install.sh --install-prefix="$pkgdir"
+
+  # El binding Qt6Pas y libunrar van DENTRO del paquete, resueltos por el
+  # RUNPATH $ORIGIN del binario y del plugin de unrar.
+  install -m 755 -d "$pkgdir/usr/lib/doublecmd-4p"
+  install -m 755 _bundled/libQt6Pas.so.6.2.10 "$pkgdir/usr/lib/doublecmd-4p/"
+  ln -sf libQt6Pas.so.6.2.10 "$pkgdir/usr/lib/doublecmd-4p/libQt6Pas.so.6"
+  ln -sf libQt6Pas.so.6.2.10 "$pkgdir/usr/lib/doublecmd-4p/libQt6Pas.so"
+  install -m 755 _bundled/libunrar.so "$pkgdir/usr/lib/doublecmd-4p/"
+  patchelf --set-rpath '$ORIGIN' "$pkgdir/usr/lib/doublecmd-4p/doublecmd"
+  patchelf --set-rpath '$ORIGIN/../../..:$ORIGIN' \
+           "$pkgdir/usr/lib/doublecmd-4p/plugins/wcx/unrar/unrar.wcx" || true
+}

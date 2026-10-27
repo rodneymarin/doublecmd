@@ -200,6 +200,9 @@ begin
   FDiskToolBar := TKASToolBar.Create(AOwner);
   FDiskToolBar.Name := Format('dskFilePanel%d', [Ord(AIndex) + 1]);
   FDiskToolBar.Parent := FDiskPanel;
+  // The drive buttons show the drive names (upstream had ShowCaptions = True
+  // in fmain.lfm; the LCL default, and runtime default, is False).
+  FDiskToolBar.ShowCaptions := True;
 
   // The controls of the tools row are aligned automatically by the LCL.
   // The order of creation is important for the right aligned buttons:
@@ -219,6 +222,11 @@ begin
   FlblDriveInfo.Parent := FToolsPanel;
   FlblDriveInfo.Align := alNone;
   FlblDriveInfo.Alignment := taCenter;
+  // Keep the width set in UpdateLayout (stretching between the drive button
+  // and the right-side buttons) so that Alignment = taCenter is visible;
+  // with the default AutoSize = True the label shrinks to the caption and
+  // the centered text always looks left-aligned.
+  FlblDriveInfo.AutoSize := False;
   FlblDriveInfo.Caption := '';
   FlblDriveInfo.ParentColor := False;
   FlblDriveInfo.OnDblClick := @lblDriveInfoDblClick;

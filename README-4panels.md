@@ -285,3 +285,22 @@ d55578e67  WIP: add file panel model, 4-panel grid constants and panel select di
 1da89b20c  Fix: panel layout, tools row and startup order for the 4 panel grid
 1eda0cf38  Feature: panel selection dialog for operations between panels
 ```
+
+---
+
+## 6. Identidad de la app: coexistencia con el DC original (fork `doublecmd-4p`)
+
+Este fork se instala como **aplicación independiente** para que no sustituya
+ni interfiera con un Double Commander original ya presente en el sistema:
+
+- **Configuración de usuario** (Linux): `~/.config/doublecmd-4p/`, controlada
+  por la constante devuelta en `src/uGlobsPaths.pas::GetAppName` (ahora
+  `'doublecmd-4p'`); esa misma cadena es el ID de instancia única, así que
+  ambas apps pueden correr a la vez con la opción "una sola copia".
+- **Instalación Linux** (`install/linux/install.sh`): binario
+  `/usr/bin/doublecmd-4p`, ficheros en `/usr/lib{,64}/doublecmd-4p/` y
+  `/usr/share/doublecmd-4p/`, entrada de menú `doublecmd-4p.desktop`
+  ("Double Commander 4P") con icono `doublecmd-4p`, página de manual
+  `doublecmd-4p.1` y política polkit `org.doublecmd4p.root`.
+- Comando para regenerar dcrevision tras cambios:
+  `install/linux/update-revision.sh <repo> <repo>` (escribe `units/dcrevision.inc`).

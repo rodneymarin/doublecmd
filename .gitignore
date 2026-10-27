@@ -35,3 +35,6 @@ lib/
 *.app/
 .DS_Store
 components/packagefiles.xml
+
+# Build artifacts produced by the Linux packaging (see dist/linux/INSTALL.md)
+dist/

@@ -31,7 +31,12 @@ var
 
 function GetAppName : String;
 begin
-  Result := 'doublecmd';
+  // Nombre de aplicacion de este fork (4 paneles).
+  // Debe diferir del Double Commander original: de esta cadena dependen
+  // la carpeta de configuracion del usuario (~/.config/<AppName>/) y el
+  // identificador de instancia unica, de modo que ambas app puedan
+  // coexistir instaladas al mismo tiempo con configuraciones propias.
+  Result := 'doublecmd-4p';
 end;
 
 procedure UpdateEnvironmentVariable;

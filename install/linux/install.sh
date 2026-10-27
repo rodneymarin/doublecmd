@@ -2,6 +2,11 @@
 
 set -e
 
+# Application name: this fork installs as a separate application so it can
+# coexist with the original Double Commander (own binary, own files, own
+# user config). Must match the name returned by uGlobsPaths.GetAppName().
+DC_APP_NAME=doublecmd-4p
+
 # Check zip tool
 ZIP=$(which zip || true)
 
@@ -26,18 +31,18 @@ for A
 do
   case "$A" in
        --)
-            DC_INSTALL_DIR=/usr/lib$LIB_SUFFIX/doublecmd
+            DC_INSTALL_DIR=/usr/lib$LIB_SUFFIX/doublecmd-4p
             ;;
         -P|--portable-prefix)
             shift
             CK_PORTABLE=1
-            DC_INSTALL_DIR=$(eval echo $1/doublecmd)
+            DC_INSTALL_DIR=$(eval echo $1/doublecmd-4p)
             break
             ;;
         -I|--install-prefix)
             shift
             DC_INSTALL_PREFIX=$(eval echo $1)
-            DC_INSTALL_DIR=$DC_INSTALL_PREFIX/usr/lib$LIB_SUFFIX/doublecmd
+            DC_INSTALL_DIR=$DC_INSTALL_PREFIX/usr/lib$LIB_SUFFIX/doublecmd-4p
             break
             ;;
   esac
@@ -114,7 +119,7 @@ if [ -z $CK_PORTABLE ]
   then
     # Share directory
     USR_SHARE=$DC_INSTALL_PREFIX/usr/share
-    DC_USR_SHARE=$DC_INSTALL_PREFIX/usr/share/doublecmd
+    DC_USR_SHARE=$DC_INSTALL_PREFIX/usr/share/doublecmd-4p
     # Copy libraries
     install -d                $DC_INSTALL_PREFIX/usr/lib$LIB_SUFFIX
     if [ "$(echo *.so*)" != "*.so*" ]; then
@@ -128,13 +133,13 @@ if [ -z $CK_PORTABLE ]
     # Copy documentation
     install -d                $DC_USR_SHARE/doc
     install -m 644 doc/*.txt  $DC_USR_SHARE/doc
-    ln -sf ../../share/doublecmd/doc $DC_INSTALL_DIR/doc
+    ln -sf ../../share/doublecmd-4p/doc $DC_INSTALL_DIR/doc
     # Copy scripts
     install -d         $DC_INSTALL_DIR/scripts
     cp -a scripts/*.py $DC_INSTALL_DIR/scripts/
     # Copy languages
     cp -r language $DC_USR_SHARE
-    ln -sf ../../share/doublecmd/language $DC_INSTALL_DIR/language
+    ln -sf ../../share/doublecmd-4p/language $DC_INSTALL_DIR/language
     # Copy pixmaps
     install -d $DC_USR_SHARE/pixmaps/dctheme
     cp -r pixmaps/mainicon $DC_USR_SHARE/pixmaps
@@ -145,22 +150,22 @@ if [ -z $CK_PORTABLE ]
       cp -r pixmaps/dctheme $DC_USR_SHARE/pixmaps
       touch -r $DC_USR_SHARE/pixmaps/dctheme $DC_USR_SHARE/pixmaps/dctheme/icon-theme.cache
     fi
-    ln -sf ../../share/doublecmd/pixmaps $DC_INSTALL_DIR/pixmaps
+    ln -sf ../../share/doublecmd-4p/pixmaps $DC_INSTALL_DIR/pixmaps
     # Copy highlighters
     cp -r highlighters $DC_USR_SHARE
-    ln -sf ../../share/doublecmd/highlighters $DC_INSTALL_DIR/highlighters
+    ln -sf ../../share/doublecmd-4p/highlighters $DC_INSTALL_DIR/highlighters
     # Create symlink and desktop files
     install -d $DC_INSTALL_PREFIX/usr/bin
     install -d $DC_INSTALL_PREFIX/usr/share/pixmaps
     install -d $DC_INSTALL_PREFIX/usr/share/applications
     install -d $DC_INSTALL_PREFIX/usr/share/icons/hicolor/scalable/apps
-    ln -sf  ../lib$LIB_SUFFIX/doublecmd/doublecmd $DC_INSTALL_PREFIX/usr/bin/doublecmd
-    install -m 644 doublecmd.png $DC_INSTALL_PREFIX/usr/share/pixmaps/doublecmd.png
-    install -m 644 install/linux/doublecmd.desktop $USR_SHARE/applications/doublecmd.desktop
-    ln -sf ../../../../doublecmd/pixmaps/mainicon/alt/dcfinal.svg \
-           $USR_SHARE/icons/hicolor/scalable/apps/doublecmd.svg
+    ln -sf  ../lib$LIB_SUFFIX/doublecmd-4p/doublecmd $DC_INSTALL_PREFIX/usr/bin/doublecmd-4p
+    install -m 644 doublecmd.png $DC_INSTALL_PREFIX/usr/share/pixmaps/doublecmd-4p.png
+    install -m 644 install/linux/doublecmd-4p.desktop $USR_SHARE/applications/doublecmd-4p.desktop
+    ln -sf ../../../../doublecmd-4p/pixmaps/mainicon/alt/dcfinal.svg \
+           $USR_SHARE/icons/hicolor/scalable/apps/doublecmd-4p.svg
     install -d $DC_INSTALL_PREFIX/usr/share/polkit-1/actions
-    install -m 644 install/linux/org.doublecmd.root.policy $USR_SHARE/polkit-1/actions/
+    install -m 644 install/linux/org.doublecmd4p.root.policy $USR_SHARE/polkit-1/actions/
   else
     # Make portable version
     mkdir $DC_INSTALL_DIR/settings
